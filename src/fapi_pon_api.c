@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -104,6 +104,9 @@
 
 #define GLUE_U16(a, b) ((uint16_t)((a) & 0xFF) << 8 | (uint16_t)((b) & 0xFF))
 
+#define TO_MILLISECONDS(a) ((a) / 8)
+#define FROM_MILLISECONDS(a) ((a) * 8)
+
 /** Maximum GEM port ID for GPON mode */
 #define PON_G984_GEM_PORT_ID_MAX 4095
 /** Maximum GEM port ID for XG-PON/XGS-PON/NG-PON2 mode */
@@ -175,6 +178,9 @@
 /** The PON operation mode belongs to ITU modes. */
 #define MODE_ITU_PON (MODE_984_GPON | MODE_987_XGPON | MODE_9807_XGSPON | \
 		      MODE_989_NGPON2_10G | MODE_989_NGPON2_2G5)
+
+/** TWDM_CONFIG.WL_SW_ROUNDS_INIT parameter's minimum allowed value */
+#define PONIPFW_TWDM_CONFIG_WL_SW_ROUNDS_MIN (1)
 
 /* Configuration values per threshold in 10G mode.
  * The table is commonly used to implement threshold levels for signal fail
@@ -2113,6 +2119,7 @@ static enum fapi_pon_errorcode pon_status_get_copy_gtc(struct pon_ctx *ctx,
 	dst_param->ploam_state = src_param->ploam_act;
 	dst_param->ploam_state_previous = src_param->ploam_prev;
 	dst_param->time_prev = src_param->ploam_time /* prev_counter */;
+	dst_param->ploam_state_change_reason = src_param->reason;
 	dst_param->auth_status = 0;
 
 	return PON_STATUS_OK;
@@ -4294,6 +4301,7 @@ static enum fapi_pon_errorcode pon_ploam_state_get_copy(struct pon_ctx *ctx,
 	dst_param->current = src_param->ploam_act;
 	dst_param->previous = src_param->ploam_prev;
 	dst_param->time_curr = src_param->ploam_time;
+	dst_param->change_reason = src_param->reason;
 
 	return PON_STATUS_OK;
 }
@@ -5840,8 +5848,6 @@ enum fapi_pon_errorcode fapi_pon_optic_cfg_set(struct pon_ctx *ctx,
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.tx_pup_mode, param->tx_pup_mode);
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.tx_bias_mode, param->tx_en_mode);
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.los_sd, param->sd_polarity);
-	ASSIGN_AND_OVERFLOW_CHECK(fw_param.loop_timing_mode,
-				  param->loop_timing_mode);
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.loop_ps_en,
 				  param->loop_timing_power_save);
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.pse_en, param->pse_en);
@@ -5857,13 +5863,6 @@ enum fapi_pon_errorcode fapi_pon_optic_cfg_set(struct pon_ctx *ctx,
 
 	if (ret != PON_STATUS_OK)
 		return ret;
-
-	err = nla_put_u8(msg, PON_MBOX_LT_MODE, param->loop_timing_mode);
-	if (err) {
-		PON_DEBUG_ERR("Can't add netlink attribute");
-		nlmsg_free(msg);
-		return PON_STATUS_NL_ERR;
-	}
 
 	err = nla_put_u8(msg, PON_MBOX_LT_POWER_SAVE,
 			 param->loop_timing_power_save);
@@ -5920,7 +5919,6 @@ static enum fapi_pon_errorcode pon_optic_cfg_get_copy(struct pon_ctx *ctx,
 	dst_param->tx_pup_mode = src_param->tx_pup_mode;
 	dst_param->tx_en_mode = src_param->tx_bias_mode;
 	dst_param->sd_polarity = src_param->los_sd;
-	dst_param->loop_timing_mode = src_param->loop_timing_mode;
 	dst_param->loop_timing_power_save = src_param->loop_ps_en;
 	dst_param->pse_en = src_param->pse_en;
 	dst_param->rogue_auto_en = src_param->re;
@@ -7101,27 +7099,6 @@ static enum fapi_pon_errorcode pon_twdm_cfg_get_copy(struct pon_ctx *ctx,
 	return PON_STATUS_OK;
 }
 
-static enum fapi_pon_errorcode
-pon_twdm_sw_delay_get_copy(struct pon_ctx *ctx,
-			   const void *data,
-			   size_t data_size,
-			   void *priv)
-{
-	enum fapi_pon_errorcode ret;
-	const struct ponfw_twdm_config *src_param = data;
-	uint32_t *dst_param = priv;
-
-	UNUSED(ctx);
-
-	ret = integrity_check(dst_param, sizeof(*src_param), data_size);
-	if (ret != PON_STATUS_OK)
-		return ret;
-
-	*dst_param = src_param->wl_sw_delay;
-
-	return PON_STATUS_OK;
-}
-
 enum fapi_pon_errorcode
 fapi_pon_twdm_cfg_get(struct pon_ctx *ctx, struct pon_twdm_cfg *param)
 {
@@ -7134,6 +7111,122 @@ fapi_pon_twdm_cfg_get(struct pon_ctx *ctx, struct pon_twdm_cfg *param)
 				    NULL,
 				    0,
 				    &pon_twdm_cfg_get_copy,
+				    param);
+}
+
+static enum fapi_pon_errorcode ponfw_twdm_config_get_copy(struct pon_ctx *ctx,
+							 const void *data,
+							 size_t data_size,
+							 void *priv)
+{
+	enum fapi_pon_errorcode ret;
+	const struct ponfw_twdm_config *src = data;
+	struct ponfw_twdm_config *dst = priv;
+
+	UNUSED(ctx);
+
+	ret = integrity_check(dst, sizeof(*src), data_size);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	if (memcpy_s(dst, sizeof(*dst), src, sizeof(*src))) {
+		PON_DEBUG_ERR("memcpy_s failed");
+		return PON_STATUS_MEMCPY_ERR;
+	}
+
+	return PON_STATUS_OK;
+}
+
+enum fapi_pon_errorcode
+fapi_pon_twdm_wlse_config_set(struct pon_ctx *ctx,
+			      const struct pon_twdm_wlse_config *param)
+{
+	enum fapi_pon_errorcode ret;
+	struct ponfw_twdm_config fw_param;
+
+	if (!param)
+		return PON_STATUS_INPUT_ERR;
+
+	/* NG-PON2 mode only */
+	if (!pon_mode_check(ctx, MODE_989_NGPON2_10G | MODE_989_NGPON2_2G5))
+		return PON_STATUS_OPERATION_MODE_ERR;
+
+	/* Check value to be configured against parameter's minimum value */
+	if (param->wl_sw_rounds_init < PONIPFW_TWDM_CONFIG_WL_SW_ROUNDS_MIN)
+		return PON_STATUS_VALUE_RANGE_ERR;
+
+	/* Populate fw_param struct essentially by channel_partition_index by
+	 * a readout from the FW. All other fw_param struct fields will be
+	 * anyhow overwritten below.
+	 */
+	ret = fapi_pon_generic_get(ctx,
+				   PONFW_TWDM_CONFIG_CMD_ID,
+				   NULL,
+				   0,
+				   &ponfw_twdm_config_get_copy,
+				   &fw_param);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	/* [FW] ms, [UCI/FAPI] 125us */
+	ASSIGN_AND_OVERFLOW_CHECK(fw_param.wl_sw_delay,
+				  TO_MILLISECONDS(param->wl_switch_delay));
+	/* DWLCH_ID set to 0 (as required by the SAS) */
+	ASSIGN_AND_OVERFLOW_CHECK(fw_param.dwlch_id, 0);
+	/* [FW] ms, [UCI/FAPI] 125us */
+	ASSIGN_AND_OVERFLOW_CHECK(fw_param.wl_sw_delay_init,
+				  TO_MILLISECONDS(param->wl_sw_delay_init));
+	ASSIGN_AND_OVERFLOW_CHECK(fw_param.wl_sw_rounds_init,
+				  param->wl_sw_rounds_init);
+
+	return fapi_pon_generic_set(ctx,
+				    PONFW_TWDM_CONFIG_CMD_ID,
+				    &fw_param,
+				    sizeof(struct ponfw_twdm_config));
+}
+
+static enum fapi_pon_errorcode
+pon_twdm_wlse_config_get_copy(struct pon_ctx *ctx,
+			      const void *data,
+			      size_t data_size,
+			      void *priv)
+{
+	enum fapi_pon_errorcode ret;
+	const struct ponfw_twdm_config *src = data;
+	struct pon_twdm_wlse_config *dst = priv;
+
+	UNUSED(ctx);
+	UNUSED(data_size);
+
+	ret = integrity_check(dst, sizeof(*src), data_size);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	memset(dst, 0x0, sizeof(*dst));
+
+	ASSIGN_AND_OVERFLOW_CHECK(dst->wl_switch_delay,
+				  FROM_MILLISECONDS(src->wl_sw_delay));
+	ASSIGN_AND_OVERFLOW_CHECK(dst->wl_sw_delay_init,
+				  FROM_MILLISECONDS(src->wl_sw_delay_init));
+	ASSIGN_AND_OVERFLOW_CHECK(dst->wl_sw_rounds_init,
+				  src->wl_sw_rounds_init);
+
+	return PON_STATUS_OK;
+}
+
+enum fapi_pon_errorcode
+fapi_pon_twdm_wlse_config_get(struct pon_ctx *ctx,
+			      struct pon_twdm_wlse_config *param)
+{
+	/* NG-PON2 mode only */
+	if (!pon_mode_check(ctx, MODE_989_NGPON2_10G | MODE_989_NGPON2_2G5))
+		return PON_STATUS_OPERATION_MODE_ERR;
+
+	return fapi_pon_generic_get(ctx,
+				    PONFW_TWDM_CONFIG_CMD_ID,
+				    NULL,
+				    0,
+				    &pon_twdm_wlse_config_get_copy,
 				    param);
 }
 
@@ -8572,8 +8665,7 @@ enum fapi_pon_errorcode
 fapi_pon_twdm_cpi_set(struct pon_ctx *ctx, uint8_t channel_partition_index)
 {
 	enum fapi_pon_errorcode ret;
-	struct ponfw_twdm_config fw_param = {0};
-	uint32_t wl_sw_delay;
+	struct ponfw_twdm_config fw_param;
 
 	if (!ctx)
 		return PON_STATUS_INPUT_ERR;
@@ -8591,76 +8683,18 @@ fapi_pon_twdm_cpi_set(struct pon_ctx *ctx, uint8_t channel_partition_index)
 				   PONFW_TWDM_CONFIG_CMD_ID,
 				   NULL,
 				   0,
-				   &pon_twdm_sw_delay_get_copy,
-				   &wl_sw_delay);
+				   &ponfw_twdm_config_get_copy,
+				   &fw_param);
 	if (ret != PON_STATUS_OK)
 		return ret;
 
 	/* Send the update message to the firmware (TWDM_CONFIG) */
-	fw_param.wl_sw_delay = wl_sw_delay;
-	fw_param.cpi = channel_partition_index;
-
-	return fapi_pon_generic_set(ctx, PONFW_TWDM_CONFIG_CMD_ID, &fw_param,
-				    sizeof(fw_param));
-}
-
-enum fapi_pon_errorcode
-fapi_pon_twdm_sw_delay_get(struct pon_ctx *ctx,
-			   uint32_t *wl_switch_delay)
-{
-	enum fapi_pon_errorcode ret;
-
-	if (!ctx || !wl_switch_delay)
-		return PON_STATUS_INPUT_ERR;
-
-	/* NG-PON2 mode only */
-	if (!pon_mode_check(ctx, MODE_989_NGPON2_10G | MODE_989_NGPON2_2G5))
-		return PON_STATUS_OPERATION_MODE_ERR;
-
-	ret = fapi_pon_generic_get(ctx,
-				   PONFW_TWDM_CONFIG_CMD_ID,
-				   NULL,
-				   0,
-				   &pon_twdm_sw_delay_get_copy,
-				   wl_switch_delay);
-	if (ret != PON_STATUS_OK)
-		return ret;
-
-	/* [FW] ms, [UCI/FAPI] 125us*/
-	*wl_switch_delay *= 8;
-
-	return ret;
-}
-
-enum fapi_pon_errorcode
-fapi_pon_twdm_sw_delay_set(struct pon_ctx *ctx,
-			   uint32_t wl_switch_delay)
-{
-	enum fapi_pon_errorcode ret;
-	struct ponfw_twdm_config fw_param = {0};
-	uint8_t cpi;
-
-	if (!ctx)
-		return PON_STATUS_INPUT_ERR;
-
-	/* NG-PON2 mode only */
-	if (!pon_mode_check(ctx, MODE_989_NGPON2_10G | MODE_989_NGPON2_2G5))
-		return PON_STATUS_OPERATION_MODE_ERR;
-
-	/* do a read modify write as more params are in this message now */
-	ret = fapi_pon_generic_get(ctx,
-				   PONFW_TWDM_CONFIG_CMD_ID,
-				   NULL,
-				   0,
-				   &pon_twdm_cpi_get_copy,
-				   &cpi);
-	if (ret != PON_STATUS_OK)
-		return ret;
-
-	/* Send the update message to the firmware (TWDM_CONFIG) */
-	fw_param.cpi = cpi;
-	/* [FW] ms, [UCI] 125us*/
-	ASSIGN_AND_OVERFLOW_CHECK(fw_param.wl_sw_delay, (wl_switch_delay / 8));
+	ASSIGN_AND_OVERFLOW_CHECK(fw_param.cpi, channel_partition_index);
+	/* dwlch_id gets reported in the TWDM_CONFIG readout, clear it when
+	 * bouncing back the FW message, just to be in compliance with the SAS.
+	 */
+	ASSIGN_AND_OVERFLOW_CHECK(fw_param.dwlch_id, 0);
+	/* leave the rest of the readout as provided by the FW */
 
 	return fapi_pon_generic_set(ctx, PONFW_TWDM_CONFIG_CMD_ID, &fw_param,
 				    sizeof(fw_param));
@@ -8693,7 +8727,6 @@ fapi_pon_olt_type_set(struct pon_ctx *ctx,
 	case PON_OLT_TIBIT:
 	case PON_OLT_CIENA:
 		/* Force interoperability config for these OLTs */
-		fw_param.iop9 = PONFW_ONU_INTEROP_CONFIG_IOP9_TIB;
 		fw_param.iop10 = PONFW_ONU_INTEROP_CONFIG_IOP10_TIB;
 		break;
 	case PON_OLT_UNKNOWN:
@@ -8706,8 +8739,6 @@ fapi_pon_olt_type_set(struct pon_ctx *ctx,
 	default:
 		fw_mask = (struct ponfw_onu_interop_config *)&iop_mask;
 		/* Keep external bits if given */
-		fw_param.iop9 =
-			PONFW_ONU_INTEROP_CONFIG_IOP9_STD | fw_mask->iop9;
 		fw_param.iop10 =
 			PONFW_ONU_INTEROP_CONFIG_IOP10_STD | fw_mask->iop10;
 		break;
@@ -9060,4 +9091,73 @@ fapi_pon_twdm_tuning_counters_get(struct pon_ctx *ctx,
 	}
 
 	return fapi_pon_nl_msg_send(ctx, &msg, &cb_data, &seq);
+}
+
+static enum fapi_pon_errorcode
+pon_xgspon_lods_counters_get_decode(struct pon_ctx *ctx,
+				    struct nlattr **attrs,
+				    void *priv)
+{
+	struct pon_xgspon_lods_counters *dst_param = priv;
+	struct nlattr *cnt[PON_MBOX_A_CNT_TWDM_LODS_MAX + 1];
+
+	memset(dst_param, 0, sizeof(*dst_param));
+
+	UNUSED(ctx);
+
+	if (!attrs[PON_MBOX_A_CNT])
+		return PON_STATUS_ERR;
+
+	if (nla_parse_nested(cnt, PON_MBOX_A_CNT_TWDM_LODS_MAX,
+			     attrs[PON_MBOX_A_CNT],
+			     pon_mbox_cnt_twdm_lods_policy) < 0)
+		return PON_STATUS_ERR;
+
+	CNT_DECODE_U64(TWDM_LODS_EVENTS_ALL, lods_events_all);
+	CNT_DECODE_U64(TWDM_LODS_RESTORED_OPER, lods_restored_oper);
+	CNT_DECODE_U64(TWDM_LODS_RESTORED_PROT, lods_restored_prot);
+	CNT_DECODE_U64(TWDM_LODS_RESTORED_DISK, lods_restored_disc);
+	CNT_DECODE_U64(TWDM_LODS_REACTIVATION_OPER, lods_reactivation);
+	CNT_DECODE_U64(TWDM_LODS_REACTIVATION_PROT, lods_reactivation_prot);
+	CNT_DECODE_U64(TWDM_LODS_REACTIVATION_DISC, lods_reactivation_disc);
+
+	return PON_STATUS_OK;
+}
+
+enum fapi_pon_errorcode
+fapi_pon_xgspon_lods_counters_get(struct pon_ctx *ctx,
+				  struct pon_xgspon_lods_counters *param)
+{
+	struct read_cmd_cb cb_data;
+	struct nl_msg *msg;
+	enum fapi_pon_errorcode ret;
+	uint32_t seq = NL_AUTO_SEQ;
+
+	if (!ctx || !param)
+		return PON_STATUS_INPUT_ERR;
+
+	/* XG-PON and XGS-PON mode only */
+	if (!pon_mode_check(ctx, MODE_987_XGPON|MODE_9807_XGSPON))
+		return PON_STATUS_OPERATION_MODE_ERR;
+
+	/* fill the nl message and get the LODS counters */
+	ret = fapi_pon_nl_msg_prepare_decode(ctx, &msg, &cb_data, &seq,
+					     &pon_xgspon_lods_counters_get_decode,
+					     NULL, param,
+					     PON_MBOX_C_TWDM_LODS_COUNTERS);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	ret = nla_put_u8(msg, PON_MBOX_D_DSWLCH_ID, PON_MBOX_D_DSWLCH_ID_CURR);
+	if (ret) {
+		PON_DEBUG_ERR("Can't add netlink attribute");
+		nlmsg_free(msg);
+		return PON_STATUS_NL_ERR;
+	}
+
+	ret = fapi_pon_nl_msg_send(ctx, &msg, &cb_data, &seq);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	return PON_STATUS_OK;
 }

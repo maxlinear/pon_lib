@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -430,6 +430,7 @@ static int cli_fapi_pon_gpon_status_get(
 		"- uint32_t ploam_state" FAPI_PON_CRLF
 		"- uint32_t ploam_state_previous" FAPI_PON_CRLF
 		"- uint64_t time_prev" FAPI_PON_CRLF
+		"- uint32_t ploam_state_change_reason" FAPI_PON_CRLF
 		"- uint32_t psm_state" FAPI_PON_CRLF
 		"- uint32_t fec_status_ds" FAPI_PON_CRLF
 		"- uint32_t fec_status_us" FAPI_PON_CRLF
@@ -473,10 +474,11 @@ static int cli_fapi_pon_gpon_status_get(
 	fct_ret = fapi_pon_gpon_status_get(p_ctx, &param);
 	return fprintf(p_out,
 		"errorcode=%d gem_ports=%u alloc_id=%hu onu_resp_time=%u gtc_stat=%u ploam_state=%u ploam_state_previous=%u time_prev=%" PRIu64
-		" psm_state=%u fec_status_ds=%u fec_status_us=%u onu_id=%u eq_del=%u auth_status=%u pon_id=\"%x %x %x %x %x %x %x\" oc_tol=%u oc_pit=%u oc_c=%u oc_r=%u oc_coex=%u ds_ch_index=%u us_ch_index=%u pon_mode=%u pon_ds_rate=%u pon_us_rate=%u %s",
+		" ploam_state_change_reason=%u psm_state=%u fec_status_ds=%u fec_status_us=%u onu_id=%u eq_del=%u auth_status=%u pon_id=\"%x %x %x %x %x %x %x\" oc_tol=%u oc_pit=%u oc_c=%u oc_r=%u oc_coex=%u ds_ch_index=%u us_ch_index=%u pon_mode=%u pon_ds_rate=%u pon_us_rate=%u %s",
 		(int)fct_ret, param.gem_ports, param.alloc_id,
 		param.onu_resp_time, param.gtc_stat, param.ploam_state,
-		param.ploam_state_previous, param.time_prev, param.psm_state,
+		param.ploam_state_previous, param.time_prev,
+		param.ploam_state_change_reason, param.psm_state,
 		param.fec_status_ds, param.fec_status_us, param.onu_id,
 		param.eq_del, param.auth_status, param.pon_id[0],
 		param.pon_id[1], param.pon_id[2], param.pon_id[3],
@@ -2164,6 +2166,7 @@ static int cli_fapi_pon_ploam_state_get(
 		"- uint32_t current" FAPI_PON_CRLF
 		"- uint32_t previous" FAPI_PON_CRLF
 		"- uint64_t time_curr" FAPI_PON_CRLF
+		"- uint32_t change_reason" FAPI_PON_CRLF
 		FAPI_PON_CRLF;
 #else
 #undef usage
@@ -2176,9 +2179,9 @@ static int cli_fapi_pon_ploam_state_get(
 	fct_ret = fapi_pon_ploam_state_get(p_ctx, &param);
 	return fprintf(p_out,
 		"errorcode=%d current=%u previous=%u time_curr=%" PRIu64
-		" %s",
+		" change_reason=%u %s",
 		(int)fct_ret, param.current, param.previous, param.time_curr,
-		FAPI_PON_CRLF);
+		param.change_reason, FAPI_PON_CRLF);
 }
 
 /** Handle command
@@ -2411,6 +2414,59 @@ static int cli_fapi_pon_dp_config_get(
 		"errorcode=%d with_rx_fcs=%u with_tx_fcs=%u without_timestamp=%u %s",
 		(int)fct_ret, param.with_rx_fcs, param.with_tx_fcs,
 		param.without_timestamp, FAPI_PON_CRLF);
+}
+
+/** Handle command
+ * \param[in] p_ctx     FAPI_PON context pointer
+ * \param[in] p_cmd     Input commands
+ * \param[in] p_out     Output FD
+ */
+static int cli_fapi_pon_xgspon_lods_counters_get(
+	void *p_ctx,
+	const char *p_cmd,
+	clios_file_io_t *p_out)
+{
+	int ret = 0;
+	enum fapi_pon_errorcode fct_ret = (enum fapi_pon_errorcode)0;
+	struct pon_xgspon_lods_counters param = {0};
+
+#ifndef FAPI_PON_DEBUG_DISABLE
+	static const char usage[] =
+		"Long Form: xgspon_lods_counters_get" FAPI_PON_CRLF
+		"Short Form: xlcg" FAPI_PON_CRLF
+		FAPI_PON_CRLF
+		"Output Parameter" FAPI_PON_CRLF
+		"- enum fapi_pon_errorcode errorcode" FAPI_PON_CRLF
+		"- uint64_t lods_events_all" FAPI_PON_CRLF
+		"- uint64_t lods_restored_oper" FAPI_PON_CRLF
+		"- uint64_t lods_restored_prot" FAPI_PON_CRLF
+		"- uint64_t lods_restored_disc" FAPI_PON_CRLF
+		"- uint64_t lods_reactivation" FAPI_PON_CRLF
+		"- uint64_t lods_reactivation_prot" FAPI_PON_CRLF
+		"- uint64_t lods_reactivation_disc" FAPI_PON_CRLF
+		FAPI_PON_CRLF;
+#else
+#undef usage
+#define usage ""
+#endif
+
+	ret = cli_check_help__file(p_cmd, usage, p_out);
+	if (ret != 0)
+		return ret;
+	fct_ret = fapi_pon_xgspon_lods_counters_get(p_ctx, &param);
+	return fprintf(p_out,
+		"errorcode=%d lods_events_all=%" PRIu64
+		" lods_restored_oper=%" PRIu64
+		" lods_restored_prot=%" PRIu64
+		" lods_restored_disc=%" PRIu64
+		" lods_reactivation=%" PRIu64
+		" lods_reactivation_prot=%" PRIu64
+		" lods_reactivation_disc=%" PRIu64
+		" %s",
+		(int)fct_ret, param.lods_events_all, param.lods_restored_oper,
+		param.lods_restored_prot, param.lods_restored_disc,
+		param.lods_reactivation, param.lods_reactivation_prot,
+		param.lods_reactivation_disc, FAPI_PON_CRLF);
 }
 
 /** Handle command
@@ -2665,23 +2721,24 @@ static int cli_fapi_pon_twdm_cpi_set(
  * \param[in] p_cmd     Input commands
  * \param[in] p_out     Output FD
  */
-static int cli_fapi_pon_twdm_sw_delay_get(
-	void *p_ctx,
-	const char *p_cmd,
-	clios_file_io_t *p_out)
+static int cli_fapi_pon_twdm_wlse_config_get(void *p_ctx,
+					     const char *p_cmd,
+					     clios_file_io_t *p_out)
 {
 	int ret = 0;
 	enum fapi_pon_errorcode fct_ret = (enum fapi_pon_errorcode)0;
-	uint32_t wl_switch_delay = 0;
+	struct pon_twdm_wlse_config param = {0};
 
 #ifndef FAPI_PON_DEBUG_DISABLE
 	static const char usage[] =
-		"Long Form: twdm_sw_delay_get" FAPI_PON_CRLF
-		"Short Form: tsdg" FAPI_PON_CRLF
+		"Long Form: twdm_wlse_config_get" FAPI_PON_CRLF
+		"Short Form: " CLI_EMPTY_CMD_HELP FAPI_PON_CRLF
 		FAPI_PON_CRLF
 		"Output Parameter" FAPI_PON_CRLF
 		"- enum fapi_pon_errorcode errorcode" FAPI_PON_CRLF
 		"- uint32_t wl_switch_delay" FAPI_PON_CRLF
+		"- uint32_t wl_sw_delay_init" FAPI_PON_CRLF
+		"- uint32_t wl_sw_rounds_init" FAPI_PON_CRLF
 		FAPI_PON_CRLF;
 #else
 #undef usage
@@ -2691,9 +2748,11 @@ static int cli_fapi_pon_twdm_sw_delay_get(
 	ret = cli_check_help__file(p_cmd, usage, p_out);
 	if (ret != 0)
 		return ret;
-	fct_ret = fapi_pon_twdm_sw_delay_get(p_ctx, &wl_switch_delay);
-	return fprintf(p_out, "errorcode=%d wl_switch_delay=%u %s",
-		(int)fct_ret, wl_switch_delay, FAPI_PON_CRLF);
+	fct_ret = fapi_pon_twdm_wlse_config_get(p_ctx, &param);
+	return fprintf(p_out,
+		"errorcode=%d wl_switch_delay=%u wl_sw_delay_init=%u wl_sw_rounds_init=%u %s",
+		(int)fct_ret, param.wl_switch_delay, param.wl_sw_delay_init,
+		param.wl_sw_rounds_init, FAPI_PON_CRLF);
 }
 
 /** Handle command
@@ -2701,22 +2760,23 @@ static int cli_fapi_pon_twdm_sw_delay_get(
  * \param[in] p_cmd     Input commands
  * \param[in] p_out     Output FD
  */
-static int cli_fapi_pon_twdm_sw_delay_set(
-	void *p_ctx,
-	const char *p_cmd,
-	clios_file_io_t *p_out)
+static int cli_fapi_pon_twdm_wlse_config_set(void *p_ctx,
+					     const char *p_cmd,
+					     clios_file_io_t *p_out)
 {
 	int ret = 0;
 	enum fapi_pon_errorcode fct_ret = (enum fapi_pon_errorcode)0;
-	uint32_t wl_switch_delay = 0;
+	struct pon_twdm_wlse_config param = {0};
 
 #ifndef FAPI_PON_DEBUG_DISABLE
 	static const char usage[] =
-		"Long Form: twdm_sw_delay_set" FAPI_PON_CRLF
-		"Short Form: tsds" FAPI_PON_CRLF
+		"Long Form: twdm_wlse_config_set" FAPI_PON_CRLF
+		"Short Form: " CLI_EMPTY_CMD_HELP FAPI_PON_CRLF
 		FAPI_PON_CRLF
 		"Input Parameter" FAPI_PON_CRLF
 		"- uint32_t wl_switch_delay" FAPI_PON_CRLF
+		"- uint32_t wl_sw_delay_init" FAPI_PON_CRLF
+		"- uint32_t wl_sw_rounds_init" FAPI_PON_CRLF
 		FAPI_PON_CRLF
 		"Output Parameter" FAPI_PON_CRLF
 		"- enum fapi_pon_errorcode errorcode" FAPI_PON_CRLF
@@ -2729,10 +2789,12 @@ static int cli_fapi_pon_twdm_sw_delay_set(
 	ret = cli_check_help__file(p_cmd, usage, p_out);
 	if (ret != 0)
 		return ret;
-	ret = cli_sscanf(p_cmd, "%u", &wl_switch_delay);
-	if (ret != 1)
+	ret = cli_sscanf(p_cmd, "%u %u %u",
+		&param.wl_switch_delay, &param.wl_sw_delay_init,
+		&param.wl_sw_rounds_init);
+	if (ret != 3)
 		return cli_check_help__file("-h", usage, p_out);
-	fct_ret = fapi_pon_twdm_sw_delay_set(p_ctx, wl_switch_delay);
+	fct_ret = fapi_pon_twdm_wlse_config_set(p_ctx, &param);
 	return fprintf(p_out, "errorcode=%d %s",
 		(int)fct_ret, FAPI_PON_CRLF);
 }
@@ -5633,7 +5695,6 @@ static int cli_fapi_pon_optic_cfg_get(
 		"- uint32_t tx_en_mode" FAPI_PON_CRLF
 		"- uint32_t tx_pup_mode" FAPI_PON_CRLF
 		"- uint32_t sd_polarity" FAPI_PON_CRLF
-		"- uint32_t loop_timing_mode" FAPI_PON_CRLF
 		"- uint32_t loop_timing_power_save" FAPI_PON_CRLF
 		"- uint32_t rogue_auto_en" FAPI_PON_CRLF
 		"- uint32_t rogue_lead_time" FAPI_PON_CRLF
@@ -5662,16 +5723,16 @@ static int cli_fapi_pon_optic_cfg_get(
 		return ret;
 	fct_ret = fapi_pon_optic_cfg_get(p_ctx, &param);
 	return fprintf(p_out,
-		"errorcode=%d laser_setup_time=%u laser_hold_time=%u serdes_setup_time=%u serdes_hold_time=%u bias_setup_time=%u bias_hold_time=%u burst_idle_pattern=%u burst_en_mode=%u tx_en_mode=%u tx_pup_mode=%u sd_polarity=%u loop_timing_mode=%u loop_timing_power_save=%u rogue_auto_en=%u rogue_lead_time=%u rogue_lag_time=%u opt_tx_sd_pol=%u pse_en=%u tx_power_scale=%u pon_mode=%u %s",
+		"errorcode=%d laser_setup_time=%u laser_hold_time=%u serdes_setup_time=%u serdes_hold_time=%u bias_setup_time=%u bias_hold_time=%u burst_idle_pattern=%u burst_en_mode=%u tx_en_mode=%u tx_pup_mode=%u sd_polarity=%u loop_timing_power_save=%u rogue_auto_en=%u rogue_lead_time=%u rogue_lag_time=%u opt_tx_sd_pol=%u pse_en=%u tx_power_scale=%u pon_mode=%u %s",
 		(int)fct_ret, param.laser_setup_time, param.laser_hold_time,
 		param.serdes_setup_time, param.serdes_hold_time,
 		param.bias_setup_time, param.bias_hold_time,
 		param.burst_idle_pattern, param.burst_en_mode,
 		param.tx_en_mode, param.tx_pup_mode, param.sd_polarity,
-		param.loop_timing_mode, param.loop_timing_power_save,
-		param.rogue_auto_en, param.rogue_lead_time,
-		param.rogue_lag_time, param.opt_tx_sd_pol, param.pse_en,
-		param.tx_power_scale, param.pon_mode, FAPI_PON_CRLF);
+		param.loop_timing_power_save, param.rogue_auto_en,
+		param.rogue_lead_time, param.rogue_lag_time,
+		param.opt_tx_sd_pol, param.pse_en, param.tx_power_scale,
+		param.pon_mode, FAPI_PON_CRLF);
 }
 
 /** Handle command
@@ -6344,6 +6405,9 @@ int pon_cli_cmd_register(struct cli_core_context_s *p_core_ctx)
 		"timeout_cfg_get", cli_fapi_pon_timeout_cfg_get);
 	(void)cli_core_key_add__file(p_core_ctx, group_mask, "dcg",
 		"dp_config_get", cli_fapi_pon_dp_config_get);
+	(void)cli_core_key_add__file(p_core_ctx, group_mask, "xlcg",
+		"xgspon_lods_counters_get",
+		cli_fapi_pon_xgspon_lods_counters_get);
 	(void)cli_core_key_add__file(p_core_ctx, group_mask, "twdmcg",
 		"twdm_cfg_get", cli_fapi_pon_twdm_cfg_get);
 	(void)cli_core_key_add__file(p_core_ctx, group_mask, "tsg",
@@ -6355,10 +6419,12 @@ int pon_cli_cmd_register(struct cli_core_context_s *p_core_ctx)
 		"twdm_cpi_get", cli_fapi_pon_twdm_cpi_get);
 	(void)cli_core_key_add__file(p_core_ctx, group_mask, "twcs",
 		"twdm_cpi_set", cli_fapi_pon_twdm_cpi_set);
-	(void)cli_core_key_add__file(p_core_ctx, group_mask, "tsdg",
-		"twdm_sw_delay_get", cli_fapi_pon_twdm_sw_delay_get);
-	(void)cli_core_key_add__file(p_core_ctx, group_mask, "tsds",
-		"twdm_sw_delay_set", cli_fapi_pon_twdm_sw_delay_set);
+	(void)cli_core_key_add__file(p_core_ctx, group_mask,
+		CLI_EMPTY_CMD, "twdm_wlse_config_get",
+		cli_fapi_pon_twdm_wlse_config_get);
+	(void)cli_core_key_add__file(p_core_ctx, group_mask,
+		CLI_EMPTY_CMD, "twdm_wlse_config_set",
+		cli_fapi_pon_twdm_wlse_config_set);
 	(void)cli_core_key_add__file(p_core_ctx, group_mask, "txcg",
 		"twdm_xgtc_counters_get",
 		cli_fapi_pon_twdm_xgtc_counters_get);

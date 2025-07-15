@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -65,9 +65,9 @@
 /* =============================== */
 
 /** PON library version, major number */
-#define PON_VER_MAJOR		1
+#define PON_VER_MAJOR		2
 /** PON library version, minor number */
-#define PON_VER_MINOR		26
+#define PON_VER_MINOR		3
 /** PON library version, build number */
 #define PON_VER_STEP		2
 /** PON library version, package type */
@@ -254,6 +254,20 @@
  * PLOAM state O5.x or reconfiguration of ToD hardware).
  */
 #define PON_ALARM_STATIC_TOD_INVALID   0x010C
+/**
+ * (G.989.3 only): Unexpected, wrong downstream wavelength received from OLT.
+ * The Rx wavelength channel configured to the transceiver does not match the
+ * one indicated in the DS PHY frame.
+ */
+#define PON_ALARM_EDGE_DSWL_ERR		0x010D
+/** Too many DS PLOAM MIC errors encountered in PLOAM state O1.2. */
+#define PON_ALARM_EDGE_MIC_ERRS_O12	0x010E
+/** Too many DS PLOAM MIC errors encountered in PLOAM state O7.1. */
+#define PON_ALARM_EDGE_MIC_ERRS_O71	0x010F
+/** Too many DS PLOAM MIC errors encountered in PLOAM state O8.2. */
+#define PON_ALARM_EDGE_MIC_ERRS_O82	0x0110
+/** MIC error encountered in a DS PLOAM message (any PLOAM state) */
+#define PON_ALARM_EDGE_MIC_ERR		0x0111
 /** Indicates TS FIFO-Overflow (write to full FIFO). */
 #define PON_ALARM_EDGE_DS_ALLOCFIFO_OFL   0x0200
 /** Indicates PLOAM-FIFO-Overflow (write to full FIFO). */
@@ -365,6 +379,10 @@
  *  a consequence it was skipped.
  */
 #define PON_ALARM_EDGE_XRX_RBLOST2   0x0705
+/** There was an "undersized" packet dropped */
+#define PON_ALARM_EDGE_XRX_RBPKTDROP 0x0706
+/** There was a Magic Word Error (NOT found) */
+#define PON_ALARM_EDGE_XRX_RBMWERR   0x0707
 /** Indicates the reassembly input data-rate exceeded the possible output
  *  data-rate.
  */
@@ -885,23 +903,6 @@ struct pon_optic_cfg {
 	 *       providing a high level if an optical signal is present.
 	 */
 	uint32_t sd_polarity;
-	/** Loop timing mode selection.
-	 * - 0: FW, The dynamic part of the loop timing is automatically
-	 *          handled by firmware. Static settings are done by software.
-	 *          Configuration is done with doubled PLL BW.
-	 * - 1: FW, The dynamic part of the loop timing is automatically
-	 *          handled by firmware. Static settings are done by software.
-	 *          Configuration is done with four times PLL BW.
-	 * - 2: SW, The software informs the firmware about the loop timing
-	 *          lock status, using \ref fapi_pon_optic_cfg_set.
-	 *          This is intended for system evaluation but not for
-	 *          productive use.
-	 * - 3: FW, The dynamic part of the loop timing is automatically
-	 *          handled by firmware. Static settings are done by software.
-	 *          This is the default setting for productive systems.
-	 *          Configuration is done with regular PLL BW.
-	 */
-	uint32_t loop_timing_mode;
 	/** Loop timing Power Save Mode.
 	 *  - 0: DIS, The Power Save Mode is disabled.
 	 *  - 1: EN, The Power Save Mode is enabled.

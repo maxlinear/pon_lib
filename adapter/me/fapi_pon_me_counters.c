@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2021 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2021 - 2025 MaxLinear, Inc.
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
  * this software module.
@@ -287,8 +287,39 @@ out:
 	return ret;
 }
 
+/** Get XGPON/XGSPON PHY/LODS */
+static enum pon_adapter_errno
+enhanced_tc_lods_counters_get(void *ll_handle,
+			      struct pa_enhanced_tc_counters *props)
+{
+	struct fapi_pon_wrapper_ctx *ctx = ll_handle;
+	enum fapi_pon_errorcode err;
+	enum pon_adapter_errno ret;
+	struct pon_xgspon_lods_counters lods_cnt = {0};
+
+	if (!ctx)
+		return PON_ADAPTER_ERR_INVALID_VAL;
+
+	pthread_mutex_lock(&ctx->lock);
+	err = fapi_pon_xgspon_lods_counters_get(ctx->pon_ctx, &lods_cnt);
+	pthread_mutex_unlock(&ctx->lock);
+
+	if (err) {
+		ret = pon_fapi_to_pa_error(err);
+		goto out;
+	}
+
+	props->lods = lods_cnt.lods_events_all;
+	props->lods_rest = lods_cnt.lods_restored_oper;
+	props->lods_react = lods_cnt.lods_reactivation;
+	ret = PON_ADAPTER_SUCCESS;
+out:
+	return ret;
+}
+
 const struct pa_enhanced_tc_pmhd_ops pon_pa_enhanced_tc_pmhd_ops = {
 	.enhanced_tc_counters_get = enhanced_tc_counters_get,
+	.lods_counters_get = enhanced_tc_lods_counters_get,
 };
 
 /** Get XGEM PMHD */

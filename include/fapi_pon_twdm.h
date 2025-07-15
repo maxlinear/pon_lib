@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2019 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -176,6 +176,24 @@ struct pon_twdm_cfg {
 	 */
 	uint32_t wl_lock;
 
+};
+
+/** structure to handle the TWDM configuration.
+ *  used by \ref fapi_pon_twdm_wlse_config_set
+ *  and \ref fapi_pon_twdm_wlse_config_get.
+ */
+struct pon_twdm_wlse_config {
+	/** TWDM Wavelength Switching Delay in 125 µs. */
+	uint32_t wl_switch_delay;
+	/** This is slowing down the wavelength search during initial
+	 * wavelength scan mode if no signal applied to save power.
+	 */
+	uint32_t wl_sw_delay_init;
+	/** The maximum number of wavelength switching rounds through all
+	 * wavelengths in initial scan mode (with faster WL changes) before
+	 * switching to regular scan mode.
+	 */
+	uint32_t wl_sw_rounds_init;
 };
 
 /**
@@ -565,36 +583,32 @@ enum fapi_pon_errorcode fapi_pon_twdm_cpi_set(struct pon_ctx *ctx,
 					      uint8_t channel_partition_index);
 
 /**
- *	Read the TWDM channel switching delay from FW.
+ *	Read the TWDM configuration from FW.
  *
  *	\param[in] ctx PON library context created by \ref fapi_pon_open.
- *	\param[out] wl_switch_delay TWDM Wavelength Switching Delay in 125 µs
+ *	\param[out] param points to a structure of pon_twdm_wlse_config type
  *
  *	\return Return value as follows:
  *	- PON_STATUS_OK: If successful
  *	- Other: An error code in case of error.
  */
-enum fapi_pon_errorcode fapi_pon_twdm_sw_delay_get(struct pon_ctx *ctx,
-						   uint32_t *wl_switch_delay);
+enum fapi_pon_errorcode
+fapi_pon_twdm_wlse_config_get(struct pon_ctx *ctx,
+			      struct pon_twdm_wlse_config *param);
 
 /**
- *	Write the TWDM channel switching delay to FW.
+ *	Write the TWDM configuration to FW.
  *
  *	\param[in] ctx PON library context created by \ref fapi_pon_open.
- *	\param[in] wl_switch_delay TWDM Wavelength Switching Delay.
- *		Additional delay in 125 µs before switching to a new wavelength
- *		when the FW is in "wavelength search mode". It is used in
- *		PLOAM states O1.x and O7.x. If a wavelength switch is
- *		triggered by the OLT through a PLOAM message (in PLOAM
- *		state O8.x), the additional delay is not applied.
- *		The resulting delay is limited to multiples of 1 ms.
+ *	\param[in] param points to a structure of pon_twdm_wlse_config type
  *
  *	\return Return value as follows:
  *	- PON_STATUS_OK: If successful
  *	- Other: An error code in case of error.
  */
-enum fapi_pon_errorcode fapi_pon_twdm_sw_delay_set(struct pon_ctx *ctx,
-						   uint32_t wl_switch_delay);
+enum fapi_pon_errorcode
+fapi_pon_twdm_wlse_config_set(struct pon_ctx *ctx,
+			      const struct pon_twdm_wlse_config *param);
 
 /**
  *	Set the TWDM wavelength channel ID for the driver counters.

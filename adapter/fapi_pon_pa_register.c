@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -429,42 +429,17 @@ static const struct cfg_option cfg_options[] = {
 		   parse_uint, psk_size),
 	CFG_OPTION(PON_OPT, "gpon", "authentication", "mode", "1",
 		   parse_uint, auth_mode),
+	/* Debugging options, forcing to non default value will not work without
+	 * corresponding config of datapath. Do not add to default uci config.
+	 */
+	CFG_OPTION(PON_OPT, "gpon", "ponip", "ds_fcs_en", "-1",
+		   parse_int, ds_fcs_en),
+	CFG_OPTION(PON_OPT, "gpon", "ponip", "ds_ts_dis", "-1",
+		   parse_int, ds_ts_dis),
 
 	CFG_OPTION(PON_OPT, "omci", "default", "enabled", "1",
 		   parse_uint, enabled),
 
-	CFG_OPTION(PON_OPT, "optic", "common", "laser_setup_time", NULL,
-		   parse_uint, optic.laser_setup_time),
-	CFG_OPTION(PON_OPT, "optic", "common", "laser_hold_time", NULL,
-		   parse_uint, optic.laser_hold_time),
-	CFG_OPTION(PON_OPT, "optic", "common", "serdes_setup_time", NULL,
-		   parse_uint, optic.serdes_setup_time),
-	CFG_OPTION(PON_OPT, "optic", "common", "serdes_hold_time", NULL,
-		   parse_uint, optic.serdes_hold_time),
-	CFG_OPTION(PON_OPT, "optic", "common", "bias_setup_time", NULL,
-		   parse_uint, optic.bias_setup_time),
-	CFG_OPTION(PON_OPT, "optic", "common", "bias_hold_time", NULL,
-		   parse_uint, optic.bias_hold_time),
-	CFG_OPTION(PON_OPT, "optic", "common", "burst_idle_pattern", NULL,
-		   parse_uint, optic.burst_idle_pattern),
-	CFG_OPTION(PON_OPT, "optic", "common", "burst_en_mode", NULL,
-		   parse_uint, optic.burst_en_mode),
-	CFG_OPTION(PON_OPT, "optic", "common", "tx_en_mode", NULL,
-		   parse_uint, optic.tx_en_mode),
-	CFG_OPTION(PON_OPT, "optic", "common", "tx_pup_mode", NULL,
-		   parse_uint, optic.tx_pup_mode),
-	CFG_OPTION(PON_OPT, "optic", "common", "sd_polarity", "-1",
-		   parse_uint, optic.sd_polarity),
-	CFG_OPTION(PON_OPT, "optic", "common", "loop_timing_mode", "3",
-		   parse_uint, optic.loop_timing_mode),
-	CFG_OPTION(PON_OPT, "optic", "common", "loop_timing_power_save", NULL,
-		   parse_uint, optic.loop_timing_power_save),
-	CFG_OPTION(PON_OPT, "optic", "common", "rogue_lag_time", "0",
-		   parse_uint, optic.rogue_lag_time),
-	CFG_OPTION(PON_OPT, "optic", "common", "rogue_auto_en", "2",
-		   parse_uint, optic.rogue_auto_en),
-	CFG_OPTION(PON_OPT, "optic", "common", "rogue_lead_time", "0",
-		   parse_uint, optic.rogue_lead_time),
 	CFG_OPTION(PON_OPT, "optic", "common", "gpio21_mode", "0",
 		   parse_uint, gpio.gpio21_mode),
 	CFG_OPTION(PON_OPT, "optic", "common", "gpio24_mode", "0",
@@ -473,21 +448,8 @@ static const struct cfg_option cfg_options[] = {
 		   parse_uint, gpio.gpio25_mode),
 	CFG_OPTION(PON_OPT, "optic", "common", "dg_dis", "0",
 		   parse_uint, dg_dis),
-	CFG_OPTION(PON_OPT, "optic", "common", "opt_tx_sd_polarity", "0",
-		   parse_uint, optic.opt_tx_sd_pol),
-	CFG_OPTION(PON_OPT, "optic", "common", "pse_en", "0",
-		   parse_uint, optic.pse_en),
-	CFG_OPTION(PON_OPT, "optic", "common", "tx_power_scale", "0",
-		   parse_tx_power_scale, optic.tx_power_scale),
 	CFG_OPTION(PON_OPT, "optic", "common", "mode", "unknown",
 		   parse_pon_mode, optic.pon_mode),
-	/* Debugging options, forcing to non default value will not work without
-	 * corresponding config of datapath. Do not add to default uci config.
-	 */
-	CFG_OPTION(PON_OPT, "optic", "common", "ds_fcs_en", "-1", parse_int,
-		   ds_fcs_en),
-	CFG_OPTION(PON_OPT, "optic", "common", "ds_ts_dis", "-1", parse_int,
-		   ds_ts_dis),
 
 	CFG_OPTION(PON_OPT, "tod", "common", "pps_scale", NULL,
 		   parse_uint, tod.pps_scale),
@@ -534,6 +496,53 @@ static const struct cfg_option cfg_options[] = {
 		   parse_uint, bias_threshold)
 };
 
+#define OPTIC_CFG_OPTION(o, p, m) \
+	CFG_OPTION(PON_OPT, "optic", NULL, o, NULL, p, m)
+
+/* optic config options, also handled per mode */
+static const struct cfg_option optic_cfg_options[] = {
+	OPTIC_CFG_OPTION("laser_setup_time", parse_uint,
+			 optic.laser_setup_time),
+	OPTIC_CFG_OPTION("laser_hold_time", parse_uint, optic.laser_hold_time),
+	OPTIC_CFG_OPTION("serdes_setup_time", parse_uint,
+			 optic.serdes_setup_time),
+	OPTIC_CFG_OPTION("serdes_hold_time", parse_uint,
+			 optic.serdes_hold_time),
+	OPTIC_CFG_OPTION("bias_setup_time", parse_uint, optic.bias_setup_time),
+	OPTIC_CFG_OPTION("bias_hold_time", parse_uint, optic.bias_hold_time),
+	OPTIC_CFG_OPTION("burst_en_mode", parse_uint, optic.burst_en_mode),
+	OPTIC_CFG_OPTION("burst_idle_pattern", parse_uint,
+			 optic.burst_idle_pattern),
+	OPTIC_CFG_OPTION("tx_en_mode", parse_uint, optic.tx_en_mode),
+	OPTIC_CFG_OPTION("tx_pup_mode", parse_uint, optic.tx_pup_mode),
+	OPTIC_CFG_OPTION("sd_polarity", parse_int, optic.sd_polarity),
+	OPTIC_CFG_OPTION("loop_timing_power_save", parse_uint,
+			 optic.loop_timing_power_save),
+	OPTIC_CFG_OPTION("rogue_lag_time", parse_uint, optic.rogue_lag_time),
+	OPTIC_CFG_OPTION("rogue_auto_en", parse_uint, optic.rogue_auto_en),
+	OPTIC_CFG_OPTION("rogue_lead_time", parse_uint, optic.rogue_lead_time),
+	OPTIC_CFG_OPTION("opt_tx_sd_polarity", parse_uint, optic.opt_tx_sd_pol),
+	OPTIC_CFG_OPTION("pse_en", parse_uint, optic.pse_en),
+	OPTIC_CFG_OPTION("tx_power_scale", parse_tx_power_scale,
+			 optic.tx_power_scale),
+};
+
+/* optic options for transceiver timing offsets */
+static const struct cfg_option optic_time_offsets_options[] = {
+	OPTIC_CFG_OPTION("laser_setup_time", parse_int,
+			 optic_offsets.laser_setup_time),
+	OPTIC_CFG_OPTION("laser_hold_time", parse_int,
+			 optic_offsets.laser_hold_time),
+	OPTIC_CFG_OPTION("serdes_setup_time", parse_int,
+			 optic_offsets.serdes_setup_time),
+	OPTIC_CFG_OPTION("serdes_hold_time", parse_int,
+			 optic_offsets.serdes_hold_time),
+	OPTIC_CFG_OPTION("bias_setup_time", parse_int,
+			 optic_offsets.bias_setup_time),
+	OPTIC_CFG_OPTION("bias_hold_time", parse_int,
+			 optic_offsets.bias_hold_time),
+};
+
 /* TWDM options are specific to NG-PON2 */
 static const struct cfg_option twdm_options[] = {
 	CFG_OPTION(PON_OPT, "optic", "twdm", "config_method", NULL,
@@ -565,7 +574,11 @@ static const struct cfg_option twdm_options[] = {
 	CFG_OPTION(PON_OPT, "optic", "twdm", "channel_mask", NULL,
 		   parse_uint, twdm_channel_mask),
 	CFG_OPTION(PON_OPT, "optic", "twdm", "wl_switch_delay", "24000",
-		   parse_uint, wl_switch_delay),
+		   parse_uint, twdm_wlse_config.wl_switch_delay),
+	CFG_OPTION(PON_OPT, "optic", "twdm", "rx_wl_switch_delay_initial",
+		    "8000", parse_uint, twdm_wlse_config.wl_sw_delay_init),
+	CFG_OPTION(PON_OPT, "optic", "twdm", "rx_wl_switch_rounds_initial",
+		    "3", parse_uint, twdm_wlse_config.wl_sw_rounds_init),
 };
 
 static const struct cfg_option serdes_generic_options[] = {
@@ -678,17 +691,29 @@ static const struct cfg_option serdes_mode_options[] = {
 		NULL, parse_uint, serdes.rx_adapt_dfe_en),
 };
 
+/**
+ *	Read all configs defined in "options" array
+ *
+ *	\param[in] ctx		PON wrapper context
+ *	\param[in] options	Array of options
+ *	\param[in] size		Size of options array
+ *	\param[in] section	Default section if not defined in array
+ *				(optional)
+ */
 static enum pon_adapter_errno read_pa_config(struct fapi_pon_wrapper_ctx *ctx,
-					     const struct pa_config *cfg,
 					     const struct cfg_option *options,
-					     size_t size,
-					     const char *section)
+					     size_t size, const char *section)
 {
 	/* Return value for this function, if at the end
 	 * ret != PON_ADAPTER_SUCCESS, then omci daemon will not start.
 	 */
 	enum pon_adapter_errno ret = PON_ADAPTER_SUCCESS;
+	const struct pa_config *cfg_ops = ctx->cfg_ops;
+	uint8_t *cfg_base = (uint8_t *)&ctx->cfg;
 	unsigned int i = 0;
+
+	if (!cfg_ops)
+		return PON_ADAPTER_ERROR;
 
 	for (i = 0; i < size; ++i) {
 		char value[PA_CONFIG_PARAM_STR_MAX_SIZE];
@@ -709,24 +734,22 @@ static enum pon_adapter_errno read_pa_config(struct fapi_pon_wrapper_ctx *ctx,
 
 		if (cfg_section) {
 			cfg_error = 1;
-			if (option->secure && cfg->get_secure)
-				cfg_error = cfg->get_secure(ctx->hl_ctx,
-					       option->name,
-					       cfg_section,
-					       option->option,
-					       sizeof(value),
-					       value);
+			if (option->secure && cfg_ops->get_secure)
+				cfg_error = cfg_ops->get_secure(
+					ctx->hl_ctx, option->name, cfg_section,
+					option->option, sizeof(value), value);
 
 			if (cfg_error)
-				cfg_error = cfg->get(ctx->hl_ctx,
-					       option->name,
-					       cfg_section,
-					       option->option,
-					       sizeof(value),
-					       value);
+				cfg_error = cfg_ops->get(
+					ctx->hl_ctx, option->name, cfg_section,
+					option->option, sizeof(value), value);
 		} else {
 			cfg_error = 0;
 		}
+
+		dbg_prn("Get config option %s.%s.%s (size %zd, flags %x) with status %d\n",
+			option->name, cfg_section, option->option, option->size,
+			option->is_mandatory, cfg_error);
 
 		if (cfg_error) {
 			/* The option is PON_REQ and must be in UCI */
@@ -773,9 +796,8 @@ static enum pon_adapter_errno read_pa_config(struct fapi_pon_wrapper_ctx *ctx,
 			}
 		}
 
-		parse_error = option->parser(
-					((uint8_t *)&ctx->cfg) + option->offset,
-					option->size, value);
+		parse_error = option->parser(cfg_base + option->offset,
+					     option->size, value);
 		if (parse_error) {
 			dbg_err("Parsing failed for: %s.%s.%s\n",
 				option->name,
@@ -783,6 +805,8 @@ static enum pon_adapter_errno read_pa_config(struct fapi_pon_wrapper_ctx *ctx,
 				option->option);
 			return parse_error;
 		}
+		dbg_prn("Parsed config option %s.%s.%s, value %s\n",
+			option->name, cfg_section, option->option, value);
 	}
 
 	return ret;
@@ -931,6 +955,7 @@ static enum pon_adapter_errno init(char const * const *init_data,
 
 	ctx->cfg_ops = pa_config;
 
+	memset(cfg, 0, sizeof(*cfg));
 	/* set defaults for some config values */
 	if (memcpy_s(cfg->protocol, sizeof(cfg->protocol),
 		     protocol_default, sizeof(protocol_default))) {
@@ -938,7 +963,8 @@ static enum pon_adapter_errno init(char const * const *init_data,
 		return PON_ADAPTER_ERROR;
 	}
 	cfg->ethertype = 0x88B7;
-	cfg->optic.burst_idle_pattern = 0x0000FFFF;
+	cfg->optic.sd_polarity = -1;
+	cfg->optic.rogue_auto_en = 2;
 
 	while (init_data && *init_data) {
 		if (sprintf_s(buffer, sizeof(buffer), "%s", *init_data) < 0) {
@@ -982,14 +1008,38 @@ static enum pon_adapter_errno init(char const * const *init_data,
 		return PON_ADAPTER_ERROR;
 	}
 
-	error = read_pa_config(ctx, pa_config, cfg_options,
-			       ARRAY_SIZE(cfg_options), NULL);
+	error = read_pa_config(ctx, cfg_options, ARRAY_SIZE(cfg_options), NULL);
 	if (error)
 		return error;
 
+	pon_mode = pon_mode_to_string(ctx->cfg.mode);
+	if (ctx->cfg.mode != ctx->cfg.optic.pon_mode)
+		dbg_wrn("optic (transceiver) mode (%s) is different from pon_mode (%s)\n",
+			pon_mode_to_string(ctx->cfg.optic.pon_mode), pon_mode);
+
+	error = read_pa_config(ctx, optic_cfg_options,
+			       ARRAY_SIZE(optic_cfg_options), "common");
+	if (error)
+		return error;
+
+	error = read_pa_config(ctx, optic_time_offsets_options,
+			       ARRAY_SIZE(optic_time_offsets_options),
+			       "offsets");
+	if (error)
+		return error;
+
+	if (pon_mode) {
+		/* Overwrite defaults with values specific for
+		 * selected PON mode */
+		error = read_pa_config(ctx, optic_cfg_options,
+				       ARRAY_SIZE(optic_cfg_options), pon_mode);
+		if (error)
+			return error;
+	}
+
 	if (ctx->cfg.mode == PON_MODE_989_NGPON2_10G ||
 	    ctx->cfg.mode == PON_MODE_989_NGPON2_2G5) {
-		error = read_pa_config(ctx, pa_config, twdm_options,
+		error = read_pa_config(ctx, twdm_options,
 				       ARRAY_SIZE(twdm_options), "twdm");
 		if (error)
 			return error;
@@ -998,22 +1048,16 @@ static enum pon_adapter_errno init(char const * const *init_data,
 
 #ifndef PON_LIB_SIMULATOR
 	/* Read default serdes configuration */
-	error = read_pa_config(ctx,
-			       pa_config,
-			       serdes_generic_options,
-			       ARRAY_SIZE(serdes_generic_options),
-			       "generic");
+	error = read_pa_config(ctx, serdes_generic_options,
+			       ARRAY_SIZE(serdes_generic_options), "generic");
 	if (error)
 		return error;
 #endif
 
-	pon_mode = pon_mode_to_string(ctx->cfg.mode);
 	if (pon_mode) {
 		/* Overwrite defaults with values specific for
 		 * selected PON mode */
-		error = read_pa_config(ctx,
-				       pa_config,
-				       serdes_mode_options,
+		error = read_pa_config(ctx, serdes_mode_options,
 				       ARRAY_SIZE(serdes_mode_options),
 				       pon_mode);
 		if (error)
@@ -1452,17 +1496,29 @@ static const struct pa_ops pon_pa_ops = {
 	.optic_ops = &optic_ops,
 };
 
-enum pon_adapter_errno libpon_ll_register_ops(void *hl_handle,
-				     const struct pa_ops **pa_ops,
-				     void **ll_handle)
+enum pon_adapter_errno libpon_ll_register_ops(void *hl_handle_legacy,
+					      const struct pa_ops **pa_ops,
+					      void **ll_handle,
+					      void *hl_handle,
+					      uint32_t if_version)
 {
 	struct fapi_pon_wrapper_ctx *ctx;
+
+	/* In legacy mode, set the new arguments to compatible values. */
+	if (hl_handle_legacy) {
+		hl_handle = hl_handle_legacy;
+		if_version = PA_IF_1ST_VER_NUMBER;
+	}
+
+	if (!PA_IF_VERSION_CHECK_COMPATIBLE(if_version))
+		return PON_ADAPTER_ERROR;
 
 	ctx = calloc(1, sizeof(*ctx));
 	if (!ctx)
 		return PON_ADAPTER_ERR_NO_MEMORY;
 
 	ctx->hl_ctx = hl_handle;
+
 	*pa_ops = &pon_pa_ops;
 	*ll_handle = ctx;
 

@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  Copyright (c) 2023 MaxLinear, Inc.
+ *  Copyright (c) 2025 MaxLinear, Inc.
  *  Copyright (c) 2019 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -101,6 +101,21 @@ static const struct alarm_type pon_alarm_level[] = {
 };
 
 static const struct alarm_type pon_alarm_edge[] = {
+	DEFINE_ALARM(PON_ALARM_EDGE_DSWL_ERR,
+		     "DWLCHID mismatch between the one selected by the transceiver and the one synchronized on."
+		     ),
+	DEFINE_ALARM(PON_ALARM_EDGE_MIC_ERRS_O12,
+		     "Too many MIC errored PLOAMd messages received while in O1.2."
+		     ),
+	DEFINE_ALARM(PON_ALARM_EDGE_MIC_ERRS_O71,
+		     "Too many MIC errored PLOAMd messages received while in O7.1."
+		     ),
+	DEFINE_ALARM(PON_ALARM_EDGE_MIC_ERRS_O82,
+		     "Too many MIC errored PLOAMd messages received while in O8.2."
+		     ),
+	DEFINE_ALARM(PON_ALARM_EDGE_MIC_ERR,
+		     "Too many MIC errored debug PLOAMd messages received while in any activation state."
+		     ),
 	DEFINE_ALARM(PON_ALARM_EDGE_UPM, "Unknown PLOAM message"),
 	DEFINE_ALARM(PON_ALARM_EDGE_DACT, "Deactivate ONU message received"),
 	DEFINE_ALARM(PON_ALARM_EDGE_RDI, "Remote defect indication"),
@@ -233,6 +248,12 @@ static const struct alarm_type pon_alarm_edge[] = {
 		     ),
 	DEFINE_ALARM(PON_ALARM_EDGE_XRX_RBLOST2,
 		     "There was no free space in the buffer 2 the frame was assigned to"
+		     ),
+	DEFINE_ALARM(PON_ALARM_EDGE_XRX_RBPKTDROP,
+		     "There was an undersized packet dropped"
+		     ),
+	DEFINE_ALARM(PON_ALARM_EDGE_XRX_RBMWERR,
+		     "There was a Magic Word Error (NOT found)"
 		     ),
 	DEFINE_ALARM(PON_ALARM_EDGE_XRX_RBOFL,
 		     "Indicates the reassembly input data-rate exceeded the possible output data-rate"

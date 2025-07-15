@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright (c) 2022 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2022 - 2025 MaxLinear, Inc.
  * Copyright (c) 2016 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -55,6 +55,11 @@ static bool listen = true;
 struct gtc_xgtc_ploam_message {
 	uint32_t msg_type_id;
 	const char *msg_type_text;
+};
+
+struct ploam_state_reason_mapping {
+	uint32_t codepoint;
+	const char *text;
 };
 
 #ifndef ARRAY_SIZE
@@ -182,6 +187,20 @@ static const struct gtc_xgtc_ploam_message xgtc_ploam_message_ds[] = {
 	{28, "Rate control"}
 };
 
+static const struct ploam_state_reason_mapping ploam_state_reason_to_text[] = {
+	{0, "Timeout TOZ - Discovery timer"},
+	{1, "Timeout TO1 - Ranging timer"},
+	{2, "Timeout TO2 - Loss of downstream synchronization (LODS) timer"},
+	{3, "Timeout TO3 - LODS protection timer"},
+	{4, "Timeout TO4 - Downstream tuning timer"},
+	{5, "Timeout TO5 - Upstream tuning timer"},
+	{6, "Timeout TO6 - Forgotten ONU timer"},
+	{7, "Timeout TProfileDwell timer"},
+	{8, "Reserved"},
+	{9, "Timeout Channel partition index timer"},
+	{65535, "Other"}
+};
+
 static const char *pon_gtc_ploam_log_message_type_get(uint32_t message_type_id,
 						      uint32_t direction)
 {
@@ -282,11 +301,25 @@ static void pond_get_gtc_log(void *priv,
 	}
 }
 
+static const char *ploam_state_reason_get(uint32_t reason)
+{
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(ploam_state_reason_to_text); i++) {
+		if (ploam_state_reason_to_text[i].codepoint == reason)
+			return ploam_state_reason_to_text[i].text;
+	}
+
+	return "Unknown PLOAM_STATE Reason";
+}
+
 static void pond_get_ploam_state(void *priv,
 				 const struct pon_ploam_state_evt *ploam_state)
 {
-	printf("ploam state: previous - %u, current - %u\n",
-		ploam_state->previous, ploam_state->current);
+	printf("ploam state: previous - %u, current - %u, change reason - %u [%s]\n",
+		ploam_state->previous, ploam_state->current,
+		ploam_state->change_reason,
+		ploam_state_reason_get(ploam_state->change_reason));
 }
 
 static int act_alarm_level_print(void *ctx, const struct alarm_type *alarm,

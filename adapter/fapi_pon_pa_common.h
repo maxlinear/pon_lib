@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2017 - 2019 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -48,6 +48,25 @@ do { \
 	UNUSED(assert_##msg); \
 } while (0)
 
+/** Optic timing offsets per transceiver
+ *  Signed value to be added to base (board) settings,
+ *  same units as in optic config.
+ */
+struct pon_optic_offsets {
+	/** Laser setup time (ps). */
+	int32_t laser_setup_time;
+	/** Laser hold time (ps). */
+	int32_t laser_hold_time;
+	/** SerDes setup time (ps). */
+	int32_t serdes_setup_time;
+	/** SerDes hold time (ps). */
+	int32_t serdes_hold_time;
+	/** Bias current enable signal setup time (ps). */
+	int32_t bias_setup_time;
+	/** Bias current enable signal hold time (ps). */
+	int32_t bias_hold_time;
+};
+
 /** Configuration parameters for FAPI PON */
 struct fapi_pon_wrapper_cfg {
 	/** ONU identifier */
@@ -94,6 +113,8 @@ struct fapi_pon_wrapper_cfg {
 	enum pon_mode mode;
 	/** Optical interface configuration. */
 	struct pon_optic_cfg optic;
+	/** Optical interface configuration, transceiver offsets. */
+	struct pon_optic_offsets optic_offsets;
 	/** GPIO configuration. */
 	struct pon_gpio_cfg gpio;
 	/** Serializer/Deserializer configuration. */
@@ -140,6 +161,8 @@ struct fapi_pon_wrapper_cfg {
 	uint8_t twdm_channel_mask;
 	/** Multiple wavelengths configuration */
 	struct pon_twdm_cfg twdm;
+	/** TWDM configuration to PONIP FW by means of TWDM_CONFIG message */
+	struct pon_twdm_wlse_config twdm_wlse_config;
 	/** Mutual authentication pre-shared key (128 bit) */
 	uint8_t psk[MAX_AUTH_TABLE_SIZE];
 	/** Mutual authentication key size */
@@ -156,8 +179,6 @@ struct fapi_pon_wrapper_cfg {
 	int32_t ds_ts_dis;
 	/** Calibration status record */
 	uint64_t cal_status_record;
-	/** TWDM Wavelength Switching Delay in 125 µs */
-	uint32_t wl_switch_delay;
 };
 
 struct fapi_pon_ani_g_data {

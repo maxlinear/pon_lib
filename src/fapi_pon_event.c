@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2017 - 2019 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -125,6 +125,7 @@ static void fapi_pon_listener_ploam_state(struct pon_ctx *ctx,
 	ploam_state.current = fw_param->ploam_act;
 	ploam_state.previous = fw_param->ploam_prev;
 	ploam_state.time_prev = fw_param->ploam_time;
+	ploam_state.change_reason = fw_param->reason;
 
 	ctx->ploam_state(ctx->priv, &ploam_state);
 
@@ -387,6 +388,14 @@ static void fapi_pon_twdm_ds_wl_config(struct pon_ctx *ctx,
 			fw_param->ds_valid = false;
 			PON_DEBUG_ERR("Applying the TWDM_DS_WL_CONFIG failed %i",
 				      ret);
+		} else {
+			/* Apply the new wavelength channel for counters too */
+			dswlch_id = fw_param->dwlch_id;
+			ret = fapi_pon_twdm_counter_wlchid_set(ctx, dswlch_id);
+			if (ret != PON_STATUS_OK)
+				PON_DEBUG_ERR("Switch DS Channel ID"
+						" for PM counters failed %i",
+						ret);
 		}
 	}
 
@@ -396,15 +405,6 @@ static void fapi_pon_twdm_ds_wl_config(struct pon_ctx *ctx,
 	if (ret != PON_STATUS_OK)
 		PON_DEBUG_ERR("Sending ACK for TWDM_DS_WL_CONFIG failed %i",
 			      ret);
-
-	if (fw_param->ds_valid) {
-		dswlch_id = fw_param->dwlch_id;
-		ret = fapi_pon_twdm_counter_wlchid_set(ctx, dswlch_id);
-		if (ret != PON_STATUS_OK)
-			PON_DEBUG_ERR("Switch DS Channel ID"
-				      " for TWDM_DS_WL_CONFIG failed %i",
-				      ret);
-	}
 }
 
 static void fapi_pon_lc_twdm_us_wl_tuning(struct pon_ctx *ctx,
@@ -473,7 +473,7 @@ static void fapi_pon_twdm_cal_record_status(struct pon_ctx *ctx,
 					    struct nl_msg *msg,
 					    struct nlattr **attrs)
 {
-	struct ponfw_onu_cal_record fw_param;
+	struct ponfw_twdm_onu_cal_record fw_param;
 	struct pon_twdm_cal_record cal_record;
 	enum fapi_pon_errorcode err;
 
@@ -903,7 +903,7 @@ void fapi_pon_listener_msg(uint16_t command, struct pon_ctx *ctx,
 	case PONFW_TWDM_US_WL_TUNING_CMD_ID:
 		fapi_pon_lc_twdm_us_wl_tuning(ctx, msg, attrs);
 		return;
-	case PONFW_ONU_CAL_RECORD_CMD_ID:
+	case PONFW_TWDM_ONU_CAL_RECORD_CMD_ID:
 		fapi_pon_twdm_cal_record_status(ctx, msg, attrs);
 		return;
 	case PONFW_SYNCE_STATUS_CMD_ID:

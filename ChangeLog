@@ -1,5 +1,65 @@
 NEXT VERSION
 
+v2.3.2 2025.05.13
+
+- PONRTSYS-14753: Fix a wrong memset location introduced in previous changes.
+
+v2.3.1 2025.05.09
+
+- PONRTSYS-14753: Split optic database to transceiver and board specific settings
+  + Read most optic configs per pon-mode, to allow board configs to specify
+    different settings per mode.
+  + In addition, read offset values for the timings from a section "offsets".
+
+v2.3.0 2025.04.29
+
+- PONRTSYS-13291: OMCI ME 344/454 - (Enhanced) TC PMHD - Feature implementation
+  + FAPI level changes (including cli) to support retrieval of LODS counters in
+    XGS-PON and XGPON mode.
+  + Uses the existing FW message interface PON_MBOX_C_TWDM_LODS_COUNTERS for
+    XG(S)PON mode as the FW message also works for XG(S)-PON in addition to
+    NG-PON2.
+- PONRTSYS-14628: Add PA IF version check
+  + Add a check for the version of the PON adapter interface and return an error
+    if the version of the higher layer module is not supported anymore.
+
+v2.2.0 2025.02.21
+
+- PONRTSYS-14516: Add 2 UCI parameters for the Optical IF in NG-PON2
+  + new parameters: rx_wl_switch_delay_initial, rx_wl_switch_rounds_initial.
+    Separate set/get FAPI interface functions for the wl_switch_delay UCI
+    parameter are removed in favour of another FAPI set/get interface functions
+    by which this parameter is configured/read back together with the two newly
+    introduced parameters.
+- PONRTSYS-14515: Additional alarms to be added
+  + PON_ALARM_EDGE_DSWL_ERR
+  + PON_ALARM_EDGE_MIC_ERRS_O12
+  + PON_ALARM_EDGE_MIC_ERRS_O71
+  + PON_ALARM_EDGE_MIC_ERRS_O82
+  + PON_ALARM_EDGE_MIC_ERR
+
+v2.1.0 2025.02.03
+
+- PONRTSYS-14349: Import FW message interface 4.0 header files
+  + new layout of PLOAM_STATE FW Msg; reason for activation state change
+- PONRTSYS-14357: [NGPON2] FEC counters counting in the wrong DSWLCH_ID
+  + Apply the new channel only if PON FW notifies it with DS_EXECUTE==1
+
+v2.0.0 2024.08.20
+
+- PONRTSYS-14347: License change from MxL to BSD (2-clause)
+
+v1.27.1 2024.07.12
+
+- PONRTSYS-12996: support new alarms for LGM-C
+  + PON_ALARM_EDGE_XRX_RBPKTDROP
+  + PON_ALARM_EDGE_XRX_RBMWERR
+
+v1.27.0 2024.05.15
+
+- PONRTSYS-13835: new FW-SAS 26, changes for LGM-C
+  + loop timing mode removed
+
 v1.26.2 2024.04.24
 
 - PONRTSYS-13674: name change in pa_management_ds_cnt:

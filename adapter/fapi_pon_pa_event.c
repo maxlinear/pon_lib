@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -333,6 +333,7 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 	struct pon_ctx *ponevt_ctx = ctx->ponevt_ctx;
 	struct pon_gpon_rerange_cfg rerange_cfg = {0};
 	struct pon_omci_cfg omci_cfg = {0};
+	struct pon_optic_cfg optic_cfg = {0};
 	struct pon_gpon_cfg gpon_onu_cfg = {0};
 	struct pon_iop_cfg iop_cfg = {0};
 	struct pon_enc_cfg enc_cfg = {0};
@@ -377,11 +378,11 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 		goto err;
 	}
 
-	if (ctx->cfg.mode == PON_MODE_984_GPON ||
-	    ctx->cfg.mode == PON_MODE_987_XGPON ||
-	    ctx->cfg.mode == PON_MODE_9807_XGSPON ||
-	    ctx->cfg.mode == PON_MODE_989_NGPON2_2G5 ||
-	    ctx->cfg.mode == PON_MODE_989_NGPON2_10G) {
+	if (cfg->mode == PON_MODE_984_GPON ||
+	    cfg->mode == PON_MODE_987_XGPON ||
+	    cfg->mode == PON_MODE_9807_XGSPON ||
+	    cfg->mode == PON_MODE_989_NGPON2_2G5 ||
+	    cfg->mode == PON_MODE_989_NGPON2_10G) {
 		iop_cfg.iop_mask = cfg->iop_mask;
 		ret = fapi_pon_iop_cfg_set(pon_ctx, &iop_cfg);
 		if (ret != PON_STATUS_OK) {
@@ -403,8 +404,8 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 		}
 	}
 
-	if (ctx->cfg.mode == PON_MODE_989_NGPON2_10G ||
-	    ctx->cfg.mode == PON_MODE_989_NGPON2_2G5) {
+	if (cfg->mode == PON_MODE_989_NGPON2_10G ||
+	    cfg->mode == PON_MODE_989_NGPON2_2G5) {
 		/* Set Wavelengtch selection LOCK
 		 * based on configured config_method
 		 */
@@ -420,9 +421,10 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 			goto err;
 		}
 
-		ret = fapi_pon_twdm_sw_delay_set(pon_ctx, cfg->wl_switch_delay);
+		ret = fapi_pon_twdm_wlse_config_set(pon_ctx,
+						    &cfg->twdm_wlse_config);
 		if (ret != PON_STATUS_OK) {
-			dbg_err_fn_ret(fapi_pon_twdm_sw_delay_set, ret);
+			dbg_err_fn_ret(fapi_pon_twdm_wlse_config_set, ret);
 			goto err;
 		}
 	}
@@ -440,17 +442,29 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 		goto err;
 	}
 
-	ret = fapi_pon_optic_cfg_set(pon_ctx, &cfg->optic);
+	if (memcpy_s(&optic_cfg, sizeof(optic_cfg), &cfg->optic,
+		     sizeof(cfg->optic)))
+		ret = PON_STATUS_ERR;
+
+	/* Add time-offset values */
+	optic_cfg.laser_setup_time += cfg->optic_offsets.laser_setup_time;
+	optic_cfg.laser_hold_time += cfg->optic_offsets.laser_hold_time;
+	optic_cfg.serdes_setup_time += cfg->optic_offsets.serdes_setup_time;
+	optic_cfg.serdes_hold_time += cfg->optic_offsets.serdes_hold_time;
+	optic_cfg.bias_setup_time += cfg->optic_offsets.bias_setup_time;
+	optic_cfg.bias_hold_time += cfg->optic_offsets.bias_hold_time;
+
+	ret = fapi_pon_optic_cfg_set(pon_ctx, &optic_cfg);
 	if (ret != PON_STATUS_OK) {
 		dbg_err_fn_ret(fapi_pon_optic_cfg_set, ret);
 		goto err;
 	}
 
-	if (ctx->cfg.mode == PON_MODE_984_GPON ||
-	    ctx->cfg.mode == PON_MODE_987_XGPON ||
-	    ctx->cfg.mode == PON_MODE_9807_XGSPON ||
-	    ctx->cfg.mode == PON_MODE_989_NGPON2_2G5 ||
-	    ctx->cfg.mode == PON_MODE_989_NGPON2_10G) {
+	if (cfg->mode == PON_MODE_984_GPON ||
+	    cfg->mode == PON_MODE_987_XGPON ||
+	    cfg->mode == PON_MODE_9807_XGSPON ||
+	    cfg->mode == PON_MODE_989_NGPON2_2G5 ||
+	    cfg->mode == PON_MODE_989_NGPON2_10G) {
 		ret = fapi_pon_omci_cfg_set(pon_ctx, &omci_cfg);
 		if (ret != PON_STATUS_OK) {
 			dbg_err_fn_ret(fapi_pon_omci_cfg_set, ret);
@@ -498,8 +512,8 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 		else
 			gpon_onu_cfg.ploam_timeout_cpl = cfg->ploam_timeout_cpl;
 
-		if (ctx->cfg.mode == PON_MODE_989_NGPON2_2G5 ||
-		    ctx->cfg.mode == PON_MODE_989_NGPON2_10G) {
+		if (cfg->mode == PON_MODE_989_NGPON2_2G5 ||
+		    cfg->mode == PON_MODE_989_NGPON2_10G) {
 			gpon_onu_cfg.ploam_timeout_tpd = cfg->ploam_timeout_tpd;
 			gpon_onu_cfg.ploam_timeout_cpi = cfg->ploam_timeout_cpi;
 		} else {
@@ -531,8 +545,8 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 		}
 	}
 
-	if (ctx->cfg.mode == PON_MODE_987_XGPON ||
-	    ctx->cfg.mode == PON_MODE_9807_XGSPON) {
+	if (cfg->mode == PON_MODE_987_XGPON ||
+	    cfg->mode == PON_MODE_9807_XGSPON) {
 		ret = fapi_pon_auth_enc_cfg_set(pon_ctx, &enc_cfg);
 		if (ret != PON_STATUS_OK) {
 			dbg_err_fn_ret(fapi_pon_auth_enc_cfg_set, ret);

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2024 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2025 MaxLinear, Inc.
  * Copyright (c) 2019 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -486,6 +486,8 @@ struct pon_ploam_state_evt {
 	 *  the most recent state change.
 	 */
 	uint64_t time_prev;
+	/** reason for last activation (a.k.a. PLOAM) state change */
+	uint32_t change_reason;
 };
 
 /** GPON PLOAM activation state information.
@@ -531,6 +533,8 @@ struct pon_ploam_state {
 	 * the most recent state change
 	 */
 	uint64_t time_curr;
+	/** reason for last activation (a.k.a. PLOAM) state change */
+	uint32_t change_reason;
 };
 
 /** GPON overall status information.
@@ -585,6 +589,8 @@ struct pon_gpon_status {
 	/** PLOAM O5 change time, time of last state change from or into O5
 	state, given in multiples of 125 us related to the current time. */
 	uint64_t time_prev;
+	/** reason for last activation (a.k.a. PLOAM) state change */
+	uint32_t ploam_state_change_reason;
 	/** Power saving state.
 	 *  - 0: AH, Active held state.
 	 *  - 1: AF, Active free state.
@@ -1472,6 +1478,28 @@ struct pon_dp_config {
 	uint8_t with_tx_fcs;
 	/** The datapath expects no timestamp in rx packets */
 	uint8_t without_timestamp;
+};
+
+/** Structure to handle the LODS specific counters.
+ *  Used by \ref fapi_pon_xgspon_lods_counters_get.
+ *  This set of counters can be used to implement the OMCI managed entity
+ *  "XG-PON and Enhanced TC performance monitoring history data".
+ */
+ struct pon_xgspon_lods_counters {
+	/** Number of LODS events */
+	uint64_t lods_events_all;
+	/** Number of LODS events restored */
+	uint64_t lods_restored_oper;
+	/** Reserved. This counter isn't used in non-NGPON2 operation mode. */
+	uint64_t lods_restored_prot;
+	/** Reserved. This counter isn't used in non-NGPON2 operation mode. */
+	uint64_t lods_restored_disc;
+	/** Number of LODS events causing reactivation */
+	uint64_t lods_reactivation;
+	/** Reserved. This counter isn't used in non-NGPON2 operation mode. */
+	uint64_t lods_reactivation_prot;
+	/** Reserved. This counter isn't used in non-NGPON2 operation mode. */
+	uint64_t lods_reactivation_disc;
 };
 
 /* GPON-specific PON library function definitions */
@@ -2610,6 +2638,24 @@ enum fapi_pon_errorcode
 fapi_pon_dp_config_get(struct pon_ctx *ctx,
 		       struct pon_dp_config *param);
 
+/**
+ *	Function to read lods counters.
+ *	This function is applicable in XG-PON, XGS-PON operation mode.
+ *
+ *	\param[in] ctx PON library context created by \ref fapi_pon_open.
+ *	\param[out] param Pointer to a structure as defined
+ *	by \ref pon_xgspon_lods_counters.
+ *
+ *	\remarks The function returns an error code in case of error.
+ *	The error code is described in \ref fapi_pon_errorcode.
+ *
+ *	\return Return value as follows:
+ *	- PON_STATUS_OK: If successful
+ *	- Other: An error code in case of error.
+ */
+enum fapi_pon_errorcode
+fapi_pon_xgspon_lods_counters_get(struct pon_ctx *ctx,
+			struct pon_xgspon_lods_counters *param);
 /*! @} */ /* End of GPON functions */
 
 /*! @} */ /* End of PON library definitions */
