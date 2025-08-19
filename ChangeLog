@@ -1,5 +1,14 @@
 NEXT VERSION
 
+v2.3.3 2025.07.03
+
+- PONRTSYS-14929: Add SFP EEPROM tweaks configuration
+  + update handling logic for the Soft-Tx-Disable writing
+- PONRTSYS-14854: Add support for Transmitter TX de-/activation via EEPROM
+  + Add CLI command eeprom_data_set to facilitate testing
+- PONRTSYS-14886: Invalid checks in twdm transceiver functions
+- PONRTSYS-14834: Update SFF Compliance decoding
+
 v2.3.2 2025.05.13
 
 - PONRTSYS-14753: Fix a wrong memset location introduced in previous changes.

@@ -450,6 +450,8 @@ static const struct cfg_option cfg_options[] = {
 		   parse_uint, dg_dis),
 	CFG_OPTION(PON_OPT, "optic", "common", "mode", "unknown",
 		   parse_pon_mode, optic.pon_mode),
+	CFG_OPTION(PON_OPT, "optic", "common", "sfp_tweaks", "0",
+		   parse_uint, sfp_tweaks),
 
 	CFG_OPTION(PON_OPT, "tod", "common", "pps_scale", NULL,
 		   parse_uint, tod.pps_scale),

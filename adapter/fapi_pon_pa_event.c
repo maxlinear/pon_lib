@@ -27,9 +27,45 @@
 #include <pthread.h>
 #include <string.h>
 
+#define DMI_STATUS_CONTROL	110
+#define DMI_CONTROL_SOFT_TX_DISABLE	(1 << 6)
+
 static bool is_operational_state(int state)
 {
 	return state >= 50 && state <= 69;
+}
+
+static enum fapi_pon_errorcode
+set_soft_tx_disable(struct pon_ctx *ponevt_ctx, bool tx_disabled)
+{
+	unsigned char data, tmp;
+	enum fapi_pon_errorcode ret;
+
+	ret = fapi_pon_eeprom_data_get(ponevt_ctx, PON_DDMI_A2,
+				       &data, DMI_STATUS_CONTROL,
+				       sizeof(data));
+
+	/* Silently ignore error if eeprom access is not possible */
+	if (ret == PON_STATUS_INPUT_ERR)
+		return PON_STATUS_OK;
+
+	if (ret != PON_STATUS_OK) {
+		dbg_wrn("Could not read from dmi eeprom file!\n");
+		return ret;
+	}
+
+	tmp = data;
+	if (tx_disabled)
+		data |= DMI_CONTROL_SOFT_TX_DISABLE;
+	else
+		data &= ~DMI_CONTROL_SOFT_TX_DISABLE;
+
+	dbg_prn("tx %s -> change 0x%02X to 0x%02X\n",
+		tx_disabled ? "disable" : "enable", tmp, data);
+
+	return fapi_pon_eeprom_data_set(ponevt_ctx, PON_DDMI_A2,
+					&data, DMI_STATUS_CONTROL,
+					sizeof(data));
 }
 
 static void
@@ -554,6 +590,15 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 		}
 	}
 
+	if ((cfg->sfp_tweaks & SFP_TWEAK_SKIP_SOFT_TX_DISABLE) == 0) {
+		/* Clear the soft tx disable bit in the DMI EEPROM */
+		ret = set_soft_tx_disable(pon_ctx, false);
+		if (ret != PON_STATUS_OK) {
+			dbg_err_fn_ret(set_soft_tx_disable, ret);
+			goto err;
+		}
+	}
+
 err:
 	ctx->init_result = ret;
 }
@@ -670,6 +715,16 @@ pon_pa_event_handling_init(struct fapi_pon_wrapper_ctx *ctx)
 		dbg_err("pa_events: connecting event listener failed\n");
 		fapi_pon_close(ponevt_ctx);
 		return EXIT_FAILURE;
+	}
+
+	if ((cfg->sfp_tweaks & SFP_TWEAK_SKIP_SOFT_TX_DISABLE) == 0) {
+		/* Set the soft tx disable bit in the DMI EEPROM */
+		ret = set_soft_tx_disable(ponevt_ctx, true);
+		if (ret != PON_STATUS_OK) {
+			dbg_err_fn_ret(set_soft_tx_disable, ret);
+			fapi_pon_close(ponevt_ctx);
+			return EXIT_FAILURE;
+		}
 	}
 
 	fapi_pon_register_fw_init_complete(ponevt_ctx, fw_init_complete);

@@ -47,9 +47,6 @@ ligent_passwd_write(struct fapi_pon_wrapper_ctx *ctx,
 	unsigned char passwd[4] = {0x12, 0x34, 0x56, 0x78};
 	enum fapi_pon_errorcode ret;
 
-	if (!ctx->twdm_ops->eeprom)
-		return PON_STATUS_ERR;
-
 	ret = fapi_pon_eeprom_data_set(pon_ctx, ctx->twdm_ops->eeprom,
 				       passwd, PON_LIGENT_PASSWD_WR,
 				       sizeof(passwd));
@@ -90,9 +87,6 @@ twdm_write_method1_us(struct fapi_pon_wrapper_ctx *ctx,
 		return PON_STATUS_ERR;
 	data = ctx->twdm_ops->wl_get(ch_id);
 
-	if (!ctx->twdm_ops->eeprom)
-		return PON_STATUS_ERR;
-
 	return fapi_pon_eeprom_data_set(pon_ctx, ctx->twdm_ops->eeprom,
 					&data, PON_LIGENT_US_WL_CONF_WR,
 					sizeof(data));
@@ -113,9 +107,6 @@ twdm_write_method1_ds(struct fapi_pon_wrapper_ctx *ctx,
 	if (!ctx->twdm_ops->wl_get)
 		return PON_STATUS_ERR;
 	data = ctx->twdm_ops->wl_get(ch_id);
-
-	if (!ctx->twdm_ops->eeprom)
-		return PON_STATUS_ERR;
 
 	return fapi_pon_eeprom_data_set(pon_ctx, ctx->twdm_ops->eeprom,
 					&data, PON_LIGENT_DS_WL_CONF_WR,
@@ -157,9 +148,6 @@ twdm_write_method2_us(struct fapi_pon_wrapper_ctx *ctx,
 	data &= 0xF0;
 	data |= wl_type;
 
-	if (!ctx->twdm_ops->eeprom)
-		return PON_STATUS_ERR;
-
 	return fapi_pon_eeprom_data_set(pon_ctx, ctx->twdm_ops->eeprom,
 					&data, PON_LIGHTRON_WL_CONF_WR,
 					sizeof(data));
@@ -173,9 +161,6 @@ twdm_write_method2_ds(struct fapi_pon_wrapper_ctx *ctx,
 	int wl_type;
 	unsigned char data;
 	enum fapi_pon_errorcode ret;
-
-	if (!ctx->twdm_ops->eeprom)
-		return PON_STATUS_ERR;
 
 	ret = fapi_pon_eeprom_data_get(pon_ctx, ctx->twdm_ops->eeprom,
 				       &data, PON_LIGHTRON_WL_CONF_WR,
@@ -213,9 +198,6 @@ twdm_write_method3_ds(struct fapi_pon_wrapper_ctx *ctx,
 {
 	unsigned char data = ch_id;
 	enum fapi_pon_errorcode ret;
-
-	if (!ctx->twdm_ops->eeprom)
-		return PON_STATUS_ERR;
 
 	ret = fapi_pon_eeprom_data_set(pon_ctx, ctx->twdm_ops->eeprom,
 				       &data, PON_PICADV_WL_CONF_WR,

@@ -766,6 +766,111 @@ static int cli_fapi_pon_eeprom_data_get(
 	return fprintf(p_out, "%s", FAPI_PON_CRLF);
 }
 
+/**
+ * Parse a space-separated string of hex bytes into a data buffer.
+ *
+ * \param data      Pointer to the output buffer to store parsed bytes.
+ * \param data_size Size of the output buffer.
+ * \param cmd       Input string containing space-separated hex bytes.
+ * \param skip      Number of initial tokens to skip in the input string.
+ * \return          Number of bytes parsed and stored in the buffer, or -1 on error.
+ */
+static int bytes_parse(uint8_t *data, int data_size, char *cmd, int skip)
+{
+	int curr_byte;
+	const char *sep = " ";
+	char *byte;
+	char *cmd_tok = NULL;
+	uint8_t *p = data;
+
+	byte = strtok_r(cmd, sep, &cmd_tok);
+	curr_byte = 0;
+	while (byte != NULL) {
+		if (curr_byte >= data_size)
+			return -1;
+
+		if (skip) {
+			skip--;
+		} else {
+			char *endptr = NULL;
+			long val = strtol(byte, &endptr, 16);
+			if (endptr == byte || *endptr != '\0' || val < 0 || val > 0xFF) {
+				return -1;
+			}
+			p[curr_byte++] = (uint8_t)(val & 0xFF);
+		}
+
+		byte = strtok_r(0, sep, &cmd_tok);
+	}
+
+	return curr_byte;
+}
+
+/** Handle command
+ * \param[in] p_ctx     FAPI_PON context pointer
+ * \param[in] p_cmd     Input commands
+ * \param[in] p_out     Output FD
+ */
+static int cli_fapi_pon_eeprom_data_set(
+	void *p_ctx,
+	const char *p_cmd,
+	clios_file_io_t *p_out)
+{
+	int ret = 0;
+	enum fapi_pon_errorcode fct_ret = (enum fapi_pon_errorcode)0;
+	char buffer[512];
+	char eeprom_file_path[128];
+	unsigned char data[4];
+	unsigned int offset = 0;
+	int data_size;
+
+#ifndef FAPI_PON_DEBUG_DISABLE
+	static const char usage[] =
+		"Long Form: eeprom_data_set" FAPI_PON_CRLF
+		"Short Form: eds" FAPI_PON_CRLF
+		FAPI_PON_CRLF
+		"Input Parameter" FAPI_PON_CRLF
+		"- unsigned int offset (max 255)" FAPI_PON_CRLF
+		"- char filename[128] (name of EEPROM)" FAPI_PON_CRLF
+		"- unsigned char data[1..4] (hex)" FAPI_PON_CRLF
+		FAPI_PON_CRLF
+		"Output Parameter" FAPI_PON_CRLF
+		"- enum fapi_pon_errorcode errorcode" FAPI_PON_CRLF
+		FAPI_PON_CRLF;
+#else
+#undef usage
+#define usage ""
+#endif
+
+	ret = cli_check_help__file(p_cmd, usage, p_out);
+	if (ret != 0)
+		return ret;
+
+	ret = cli_sscanf(p_cmd, "%u %127s", &offset, &eeprom_file_path[0]);
+	if (ret != 2)
+		return cli_check_help__file("-h", usage, p_out);
+
+	ret = sprintf_s(buffer, sizeof(buffer), "%s", p_cmd);
+	if (ret < 0)
+		return ret;
+
+	data_size = bytes_parse(data, sizeof(data), buffer, 2);
+	if (data_size <= 0 || data_size > (int)sizeof(data))
+		return cli_check_help__file("-h", usage, p_out);
+
+	/* We always use PON_DDMI_A0 here, as the cli context is only temporary
+	 * and for the raw eeprom access it does not matter.
+	 */
+	fct_ret = fapi_pon_eeprom_open(p_ctx, PON_DDMI_A0, eeprom_file_path);
+
+	if (fct_ret == PON_STATUS_OK)
+		fct_ret = fapi_pon_eeprom_data_set(p_ctx, PON_DDMI_A0, &data[0],
+						   offset, data_size);
+
+	fprintf(p_out, "errorcode=%d ", (int)fct_ret);
+	return fprintf(p_out, "%s", FAPI_PON_CRLF);
+}
+
 /** Handle command
  *  \param[in] p_ctx     FAPI_PON context pointer
  *  \param[in] p_cmd     Input commands
@@ -1334,8 +1439,10 @@ int pon_ext_cli_cmd_register(struct cli_core_context_s *p_core_ctx)
 		"gpon_cfg_get", cli_fapi_pon_gpon_cfg_get);
 	cli_core_key_add__file(p_core_ctx, group_mask, "sng",
 		"serial_number_get", cli_fapi_pon_serial_number_get);
-	(void)cli_core_key_add__file(p_core_ctx, group_mask, "edg",
+	cli_core_key_add__file(p_core_ctx, group_mask, "edg",
 		"eeprom_data_get", cli_fapi_pon_eeprom_data_get);
+	cli_core_key_add__file(p_core_ctx, group_mask, "eds",
+		"eeprom_data_set", cli_fapi_pon_eeprom_data_set);
 	cli_core_key_add__file(p_core_ctx, group_mask, "osg",
 		"optic_status_get", cli_fapi_pon_optic_status_get);
 	cli_core_key_add__file(p_core_ctx, group_mask, "opg",

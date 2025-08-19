@@ -127,6 +127,10 @@ struct fapi_pon_wrapper_cfg {
 	char eeprom_dmi[64];
 	/** EEPROM serial id filename */
 	char eeprom_serial_id[64];
+	/** SFP EEPROM tweaks,
+	 * see SFP_TWEAK_SKIP_SOFT_TX_DISABLE define below
+	 */
+	uint32_t sfp_tweaks;
 	/** Bias threshold */
 	uint16_t bias_threshold;
 	/** Lower optical threshold */
@@ -180,6 +184,14 @@ struct fapi_pon_wrapper_cfg {
 	/** Calibration status record */
 	uint64_t cal_status_record;
 };
+
+/**
+ * SFP EEPROM tweaks
+ * Each bit can be used to enable/disable specific behaviour.
+ * The bits are defined in the SFP_TWEAK_* macros.
+ */
+/** bit 0: Skip toggle of SOFT_TX_DISABLE */
+#define SFP_TWEAK_SKIP_SOFT_TX_DISABLE (1 << 0)
 
 struct fapi_pon_ani_g_data {
 	/** Lock for data structure */

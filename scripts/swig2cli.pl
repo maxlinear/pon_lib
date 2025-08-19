@@ -6,6 +6,8 @@ use lib "../../../lib/lib_cli/scripts";
 use xml::xml2c;
 use xml::xml2c_co_gpon;
 
+my $out_file = '../cli/fapi_pon_cli.c';
+
 sub main
 {
    # generate XML
@@ -36,22 +38,29 @@ sub main
    my @includes_st = (
                   );
 
-   my $out_file = '../cli/fapi_pon_cli.c';
 
    my $xml_config = 'cli_config.xml';
 
    printf "Generate $out_file\n";
 
    parse_gpon($xml_file, $xml_config, $out_file, \@includes, 'pon', \@misc_cli_files, 0, \@includes_st);
+}
 
-   system("sed -i \"s/\\r\\n/\\n/g\" $out_file");
+sub reformat
+{
+    open(my $in, '<', $out_file) or die "Can't read $out_file: $!";
+    my $filedata = do { local $/; <$in> };
+    close($in);
 
-   system('sed -i "s/\"errorcode=%d addr=%u data=%u /\"errorcode=%d addr=0x%x data=0x%x /g" ' . $out_file);
-   system("sed -i \"s/cli_autogen_commands_register/pon_cli_cmd_register/g\" $out_file");
-   # yes we need 10 /, in bash we need \\\\ for the one / and /" for the ",
-   # because of perl we have to escape all / again, this makes 10. ;-)
-   system('sed -i "s/pon_id=\\\\\\\\\\"%u %u %u %u %u %u %u\\\\\\\\\\"/pon_id=\\\\\\\\\\"%x %x %x %x %x %x %x\\\\\\\\\\"/g" ' . $out_file);
+    $filedata =~ s/cli_autogen_commands_register/pon_cli_cmd_register/g;
+    $filedata =~ s/pon_id=\\"%u %u %u %u %u %u %u\\"/pon_id=\\"%x %x %x %x %x %x %x\\"/g;
+    $filedata =~ s/\r\n?/\n/g;
 
+    open(my $out, '>', $out_file) or die "Can't write $out_file: $!";
+    binmode($out, ":unix");
+    print $out $filedata;
+    close($out);
 }
 
 main();
+reformat();

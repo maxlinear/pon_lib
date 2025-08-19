@@ -810,6 +810,12 @@ int main(int argc, char *argv[])
 		.verbose = false,
 	};
 
+	/* attempt to set both stdout and stderr to unbuffered mode! */
+	if (setvbuf(stdout, NULL, _IONBF, 0))
+		perror("Attempt to set stdout to unbuffered mode has failed");
+	if (setvbuf(stderr, NULL, _IONBF, 0))
+		perror("Attempt to set stderr to unbuffered mode has failed");
+
 	while ((opt = getopt_long(argc, argv, "a:r:hs:d:n:i:o:tvm:",
 				  long_options, &option_index)) != -1) {
 		switch (opt) {

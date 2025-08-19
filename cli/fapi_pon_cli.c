@@ -2721,9 +2721,10 @@ static int cli_fapi_pon_twdm_cpi_set(
  * \param[in] p_cmd     Input commands
  * \param[in] p_out     Output FD
  */
-static int cli_fapi_pon_twdm_wlse_config_get(void *p_ctx,
-					     const char *p_cmd,
-					     clios_file_io_t *p_out)
+static int cli_fapi_pon_twdm_wlse_config_get(
+	void *p_ctx,
+	const char *p_cmd,
+	clios_file_io_t *p_out)
 {
 	int ret = 0;
 	enum fapi_pon_errorcode fct_ret = (enum fapi_pon_errorcode)0;
@@ -2760,9 +2761,10 @@ static int cli_fapi_pon_twdm_wlse_config_get(void *p_ctx,
  * \param[in] p_cmd     Input commands
  * \param[in] p_out     Output FD
  */
-static int cli_fapi_pon_twdm_wlse_config_set(void *p_ctx,
-					     const char *p_cmd,
-					     clios_file_io_t *p_out)
+static int cli_fapi_pon_twdm_wlse_config_set(
+	void *p_ctx,
+	const char *p_cmd,
+	clios_file_io_t *p_out)
 {
 	int ret = 0;
 	enum fapi_pon_errorcode fct_ret = (enum fapi_pon_errorcode)0;

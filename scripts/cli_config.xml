@@ -77,6 +77,12 @@
          <attribute name="ignore" value="yes"/>
       </attributelist>
       <attributelist>
+         <attribute fct_name="fapi_pon_eeprom_data_set"/>
+         <attribute name="short_CLI_name" value="eds"/>
+         <attribute name="long_CLI_name" value="eeprom_data_set"/>
+         <attribute name="ignore" value="no"/>
+      </attributelist>
+      <attributelist>
          <attribute fct_name="fapi_pon_eeprom_open"/>
          <attribute name="ignore" value="yes"/>
       </attributelist>
