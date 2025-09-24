@@ -250,12 +250,12 @@ struct pon_allocation_id {
 	 *       mapping. It can be deleted through PLOAM without
 	 *       further notice to the software.
 	 *  - 3: LINKED The Alloc ID has been assigned by the OLT
-	 *       trough PLOAM and the software has requested this for
+	 *       through PLOAM and the software has requested this for
 	 *       OMCI-controlled GEM port mapping. It cannot be
 	 *       deleted through PLOAM without waiting for software
 	 *       confirmation through ALLOC_ID_UNLINK.
 	 *  - 4: BLOCKED The Alloc ID has been de-assigned by the
-	 *       OLT trough PLOAM but the software has requested
+	 *       OLT through PLOAM but the software has requested
 	 *       this for OMCI-controlled GEM port mapping. It cannot
 	 *       be deleted through PLOAM without waiting for
 	 *       software confirmation through ALLOC_ID_UNLINK.
@@ -279,7 +279,7 @@ struct pon_allocation_index {
 	 *  This flag indicates, if the requested Allocation ID creation
 	 *  and linking could be completed as it was already created
 	 *  through the PLOAM channel in the hardware table.
-	 *  - 0: REQESTED, Allocation ID creation is pending in state
+	 *  - 0: REQUESTED, Allocation ID creation is pending in state
 	 *       REQUESTED or ASSIGNED.
 	 *  - 1: LINKED Allocation ID creation is complete.
 	 */

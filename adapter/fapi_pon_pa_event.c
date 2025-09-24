@@ -35,37 +35,49 @@ static bool is_operational_state(int state)
 	return state >= 50 && state <= 69;
 }
 
-static enum fapi_pon_errorcode
-set_soft_tx_disable(struct pon_ctx *ponevt_ctx, bool tx_disabled)
+static enum fapi_pon_errorcode set_soft_tx_disable(struct pon_ctx *ponevt_ctx,
+						   bool tx_disabled)
 {
 	unsigned char data, tmp;
-	enum fapi_pon_errorcode ret;
+	enum fapi_pon_errorcode ret = PON_STATUS_OK;
+	int loops = 2;
 
-	ret = fapi_pon_eeprom_data_get(ponevt_ctx, PON_DDMI_A2,
-				       &data, DMI_STATUS_CONTROL,
-				       sizeof(data));
+	/* Try setting the soft tx disable bit multiple times,
+	 * exit early when it is already set to the expected value
+	 */
+	while (loops--) {
+		ret = fapi_pon_eeprom_data_get(ponevt_ctx, PON_DDMI_A2, &data,
+					       DMI_STATUS_CONTROL,
+					       sizeof(data));
 
-	/* Silently ignore error if eeprom access is not possible */
-	if (ret == PON_STATUS_INPUT_ERR)
-		return PON_STATUS_OK;
+		/* Silently ignore error if eeprom access is not possible */
+		if (ret == PON_STATUS_INPUT_ERR)
+			return PON_STATUS_OK;
 
-	if (ret != PON_STATUS_OK) {
-		dbg_wrn("Could not read from dmi eeprom file!\n");
-		return ret;
+		if (ret != PON_STATUS_OK) {
+			dbg_wrn("Could not read from dmi eeprom file!\n");
+			return ret;
+		}
+
+		tmp = data;
+		if (tx_disabled)
+			data |= DMI_CONTROL_SOFT_TX_DISABLE;
+		else
+			data &= ~DMI_CONTROL_SOFT_TX_DISABLE;
+
+		dbg_prn("tx %s -> change 0x%02X to 0x%02X\n",
+			tx_disabled ? "disable" : "enable", tmp, data);
+
+		/* Skip writing when bit is already at expected level */
+		if (tmp == data)
+			return PON_STATUS_OK;
+
+		ret = fapi_pon_eeprom_data_set(ponevt_ctx, PON_DDMI_A2, &data,
+					       DMI_STATUS_CONTROL,
+					       sizeof(data));
 	}
 
-	tmp = data;
-	if (tx_disabled)
-		data |= DMI_CONTROL_SOFT_TX_DISABLE;
-	else
-		data &= ~DMI_CONTROL_SOFT_TX_DISABLE;
-
-	dbg_prn("tx %s -> change 0x%02X to 0x%02X\n",
-		tx_disabled ? "disable" : "enable", tmp, data);
-
-	return fapi_pon_eeprom_data_set(ponevt_ctx, PON_DDMI_A2,
-					&data, DMI_STATUS_CONTROL,
-					sizeof(data));
+	return ret;
 }
 
 static void
@@ -124,52 +136,56 @@ handle_active_alarms(void *priv, const struct pon_alarm_status *alarms)
 	enum fapi_pon_errorcode ret;
 	enum pon_adapter_errno err;
 
-	if (alarms->alarm_id == PON_ALARM_EDGE_OIKC &&
-	    alarms->alarm_status == PON_ALARM_EN &&
-	    ctx->event_handlers.omci_ik_update) {
-		ret = fapi_pon_omci_ik_get(ponevt_ctx, &pon_omci_ik);
-		if (ret == PON_STATUS_OK) {
-			if (memcpy_s(&pa_omci_ik, sizeof(pa_omci_ik),
-			    &pon_omci_ik, sizeof(pon_omci_ik))) {
-				dbg_err_fn(memcpy_s);
-				return;
+	switch (alarms->alarm_id) {
+	case PON_ALARM_EDGE_OIKC:
+		if (ctx->event_handlers.omci_ik_update) {
+			ret = fapi_pon_omci_ik_get(ponevt_ctx, &pon_omci_ik);
+			if (ret == PON_STATUS_OK) {
+				if (memcpy_s(&pa_omci_ik, sizeof(pa_omci_ik),
+					     &pon_omci_ik,
+					     sizeof(pon_omci_ik))) {
+					dbg_err_fn(memcpy_s);
+					return;
+				}
+				ctx->event_handlers.omci_ik_update(ctx->hl_ctx,
+								   &pa_omci_ik);
 			}
-			ctx->event_handlers.omci_ik_update(ctx->hl_ctx,
-							&pa_omci_ik);
 		}
-	}
+		break;
 
-	if (alarms->alarm_id == PON_ALARM_EDGE_ASC &&
-	    alarms->alarm_status == PON_ALARM_EN &&
-	    ctx->event_handlers.auth_status_chg) {
-		ret = fapi_pon_gpon_status_get(ponevt_ctx, &gpon_status);
-		if (ret == PON_STATUS_OK)
-			ctx->event_handlers.auth_status_chg(
-				ctx->hl_ctx,
-				gpon_status.auth_status);
-	}
+	case PON_ALARM_EDGE_ASC:
+		if (ctx->event_handlers.auth_status_chg) {
+			ret = fapi_pon_gpon_status_get(ponevt_ctx, &gpon_status);
+			if (ret == PON_STATUS_OK)
+				ctx->event_handlers.auth_status_chg(
+					ctx->hl_ctx, gpon_status.auth_status);
+		}
+		break;
 
-	if (alarms->alarm_id == PON_ALARM_EDGE_CPI_TO &&
-	    alarms->alarm_status == PON_ALARM_EN) {
+	case PON_ALARM_EDGE_CPI_TO:
 		ctx->cfg.twdm.ch_partition_index = 0;
 
 		err = pon_pa_config_write(ctx, "optic", "twdm",
-					  "ch_partition_index",
-					  "0", true);
+					  "ch_partition_index", "0", true);
 		if (err != PON_ADAPTER_SUCCESS)
 			dbg_err_fn_ret(pon_pa_config_write, err);
 
 		if (ctx->event_handlers.ch_partition_index_reset)
 			ctx->event_handlers.ch_partition_index_reset(
 				ctx->hl_ctx);
-	}
+		break;
 
-	if (alarms->alarm_id == PON_ALARM_STATIC_SF &&
-	    alarms->alarm_status == PON_ALARM_EN)
+	case PON_ALARM_STATIC_SF:
 		ctx->ani_g_data.signal_fail = PON_ALARM_EN;
-	if (alarms->alarm_id == PON_ALARM_STATIC_SD &&
-	    alarms->alarm_status == PON_ALARM_EN)
+		break;
+
+	case PON_ALARM_STATIC_SD:
 		ctx->ani_g_data.signal_degrade = PON_ALARM_EN;
+		break;
+
+	default:
+		break;
+	}
 
 	if (ctx->event_handlers.pon_alarm)
 		ctx->event_handlers.pon_alarm(ctx->hl_ctx, alarms->alarm_id,
@@ -180,13 +196,39 @@ static void
 handle_clear_alarms(void *priv, const struct pon_alarm_status *alarms)
 {
 	struct fapi_pon_wrapper_ctx *ctx = priv;
+	struct fapi_pon_wrapper_cfg *cfg = &ctx->cfg;
+	enum fapi_pon_errorcode ret;
 
-	if (alarms->alarm_id == PON_ALARM_STATIC_SF &&
-	    alarms->alarm_status == PON_ALARM_DIS)
+	switch (alarms->alarm_id) {
+	case PON_ALARM_STATIC_SF:
 		ctx->ani_g_data.signal_fail = PON_ALARM_DIS;
-	if (alarms->alarm_id == PON_ALARM_STATIC_SD &&
-	    alarms->alarm_status == PON_ALARM_DIS)
+		break;
+
+	case PON_ALARM_STATIC_SD:
 		ctx->ani_g_data.signal_degrade = PON_ALARM_DIS;
+		break;
+
+	case PON_ALARM_STATIC_LODS:
+	case PON_ALARM_STATIC_LOF:
+		/* Clearing the Soft TX Disable when the LODS (XGS-PON) or
+		 * LOF (GPON) alarm is cleared.
+		 * This is done to allow the transceiver to re-enable the TX
+		 * path if it was previously disabled. We disable TX manually
+		 * before loading the firmware, but this can also happen when a
+		 * transceiver is re-inserted after the firmware is loaded and
+		 * it has the TX disabled by default.
+		 */
+		if ((cfg->sfp_tweaks & SFP_TWEAK_SKIP_SOFT_TX_DISABLE) == 0) {
+			/* Clear the soft tx disable bit in the DMI EEPROM */
+			ret = set_soft_tx_disable(ctx->ponevt_ctx, false);
+			if (ret != PON_STATUS_OK)
+				dbg_err_fn_ret(set_soft_tx_disable, ret);
+		}
+		break;
+
+	default:
+		break;
+	}
 
 	if (ctx->event_handlers.pon_alarm)
 		ctx->event_handlers.pon_alarm(ctx->hl_ctx, alarms->alarm_id,
@@ -590,15 +632,6 @@ static void init_ponip_fw(struct fapi_pon_wrapper_ctx *ctx,
 		}
 	}
 
-	if ((cfg->sfp_tweaks & SFP_TWEAK_SKIP_SOFT_TX_DISABLE) == 0) {
-		/* Clear the soft tx disable bit in the DMI EEPROM */
-		ret = set_soft_tx_disable(pon_ctx, false);
-		if (ret != PON_STATUS_OK) {
-			dbg_err_fn_ret(set_soft_tx_disable, ret);
-			goto err;
-		}
-	}
-
 err:
 	ctx->init_result = ret;
 }
@@ -717,8 +750,12 @@ pon_pa_event_handling_init(struct fapi_pon_wrapper_ctx *ctx)
 		return EXIT_FAILURE;
 	}
 
+	/* Set the soft tx disable bit in the DMI EEPROM.
+	 * By this we ensure that the TX path is disabled before loading
+	 * the firmware and we don't have the laser active before the firmware
+	 * is active and correctly configured.
+	 */
 	if ((cfg->sfp_tweaks & SFP_TWEAK_SKIP_SOFT_TX_DISABLE) == 0) {
-		/* Set the soft tx disable bit in the DMI EEPROM */
 		ret = set_soft_tx_disable(ponevt_ctx, true);
 		if (ret != PON_STATUS_OK) {
 			dbg_err_fn_ret(set_soft_tx_disable, ret);

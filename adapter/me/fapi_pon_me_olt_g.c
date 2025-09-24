@@ -21,7 +21,7 @@ static const char pon_olt_vendor_id[PON_OLT_LAST + 1][5] = {
 	[PON_OLT_UNKNOWN] = {0},
 	/** OLT type Adtran (any type and HW/SW version) */
 	[PON_OLT_ADTRAN] = "ADTN",
-	/** Calix OLT, does not report an identifyer */
+	/** Calix OLT, does not report an identifier */
 	[PON_OLT_CALIX] = {0},
 	/** OLT type Ciena (any type and HW/SW version) */
 	[PON_OLT_CIENA] = "CIEN",
@@ -33,7 +33,7 @@ static const char pon_olt_vendor_id[PON_OLT_LAST + 1][5] = {
 	[PON_OLT_NOKIA] = "ALCL",
 	/** OLT type Tibit (any type and HW/SW version) */
 	[PON_OLT_TIBIT] = "TBIT",
-	/** ZTE OLT, does not report an identifyer */
+	/** ZTE OLT, does not report an identifier */
 	[PON_OLT_ZTE] = {0},
 };
 

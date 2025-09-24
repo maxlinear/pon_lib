@@ -69,7 +69,7 @@
 /** PON library version, minor number */
 #define PON_VER_MINOR		3
 /** PON library version, build number */
-#define PON_VER_STEP		3
+#define PON_VER_STEP		4
 /** PON library version, package type */
 #define PON_VER_TYPE		0
 /** PON library version concatenation */
@@ -1099,7 +1099,7 @@ struct pon_serdes_cfg {
 	uint32_t rx_eq_adapt_mode;
 	/** Select Storage Bank for Receiver Adaptation.
 	 *  The SerDes supports two internal register storage banks for saving
-	 *  adpatation results.
+	 *  adaptation results.
 	 *  This parameter specifies which one is selected.
 	 *  The storage banks are used for restoring the adapted values when
 	 *  needed (for example, when returning from another rate).

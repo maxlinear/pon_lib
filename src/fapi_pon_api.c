@@ -4583,13 +4583,27 @@ static enum fapi_pon_errorcode pon_debug_alloc(struct pon_ctx *ctx,
 enum fapi_pon_errorcode fapi_pon_debug_alloc_assign(struct pon_ctx *ctx,
 						    uint16_t alloc_id)
 {
-	return pon_debug_alloc(ctx, 0, alloc_id, true);
+	enum fapi_pon_errorcode ret;
+	struct pon_gpon_status gpon_status = {0};
+
+	ret = fapi_pon_gpon_status_get(ctx, &gpon_status);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	return pon_debug_alloc(ctx, gpon_status.onu_id, alloc_id, true);
 }
 
 enum fapi_pon_errorcode fapi_pon_debug_alloc_deassign(struct pon_ctx *ctx,
 						      uint16_t alloc_id)
 {
-	return pon_debug_alloc(ctx, 0, alloc_id, false);
+	enum fapi_pon_errorcode ret;
+	struct pon_gpon_status gpon_status = {0};
+
+	ret = fapi_pon_gpon_status_get(ctx, &gpon_status);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	return pon_debug_alloc(ctx, gpon_status.onu_id, alloc_id, false);
 }
 
 static enum fapi_pon_errorcode
@@ -8028,7 +8042,7 @@ fapi_pon_wl_set(struct pon_ctx *ctx,
 		return PON_STATUS_MEMCPY_ERR;
 	}
 
-	/* Command 0x999 will be interprated as fake event */
+	/* Command 0x999 will be interpreted as fake event */
 	ret = fapi_pon_generic_set(ctx, 0x999, data, data_len);
 
 	free(data);

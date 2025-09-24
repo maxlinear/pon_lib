@@ -1,5 +1,16 @@
 NEXT VERSION
 
+v2.3.4 2025.08.26
+
+- PONRTSYS-15018: Improve soft TX disable handling with retry mechanism
+- PONRTSYS-14958: No O51 status after unplug-plug sequence for Nokia stick
+  + Refactor soft TX disable logic, enable TX when LODS or LOF alarm is cleared
+  + Refactor alarm handling logic to remove redundant status checks for PON alarms
+  + Refactor alarm handling logic to use switch-case for better readability and maintainability.
+- PONRTSYS-14973: Add codespell config and fix spelling in code
+- PONRTSYS-14925: Test GEM Port Network CTP fails sporadically
+  + Use actual ONU-ID and not 0 when crafting an Assign_Alloc-ID PLOAMd message
+
 v2.3.3 2025.07.03
 
 - PONRTSYS-14929: Add SFP EEPROM tweaks configuration

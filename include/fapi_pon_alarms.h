@@ -45,8 +45,8 @@ struct alarm_type {
  *
  *	\return Return value as follows:
  *	- -1: If function failed and iterations should be broken
- *	- 1: If function succeded and next loop is forbidden
- *	- 0: If function succeded and next loop is alloved
+ *	- 1: If function succeeded and next loop is forbidden
+ *	- 0: If function succeeded and next loop is alloved
  */
 typedef int (*alarms_visitor_t)(void *ctx, const struct alarm_type *alarm,
 				void *data);
@@ -69,8 +69,8 @@ typedef int (*alarms_visitor_t)(void *ctx, const struct alarm_type *alarm,
  *
  *	\return Return value as follows:
  *	- -1: If cb function returned -1
- *	- 1: If function succeded and next loop is forbidden
- *	- 0: If function succeded and next loop is allowed
+ *	- 1: If function succeeded and next loop is forbidden
+ *	- 0: If function succeeded and next loop is allowed
  */
 int fapi_pon_visit_alarms_level(void *ctx, alarms_visitor_t cb, void *data);
 
@@ -92,8 +92,8 @@ int fapi_pon_visit_alarms_level(void *ctx, alarms_visitor_t cb, void *data);
  *
  *	\return Return value as follows:
  *	- -1: If cb function returned -1
- *	- 1: If function succeded and next loop is forbidden
- *	- 0: If function succeded and next loop is allowed
+ *	- 1: If function succeeded and next loop is forbidden
+ *	- 0: If function succeeded and next loop is allowed
  */
 int fapi_pon_visit_alarms_edge(void *ctx, alarms_visitor_t cb, void *data);
 

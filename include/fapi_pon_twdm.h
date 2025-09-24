@@ -329,7 +329,7 @@ struct pon_twdm_channel_profile {
 	/** This indicates if the OLT applies downstream FEC for the channel
 	 *  profile.
 	 *  - 0: FEC_OFF, Downstream FEC is inactive.
-	 *  - 1: FRC_ON, Downstream FEC is actice.
+	 *  - 1: FEC_ON, Downstream FEC is active.
 	 */
 	uint8_t ds_fec;
 	/** Downstream data rate.
