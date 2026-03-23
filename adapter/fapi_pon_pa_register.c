@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2025 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2026 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -1188,11 +1188,18 @@ static enum pa_pon_op_mode get_pa_mode(enum pon_mode mode)
 	}
 }
 
-static enum pa_pon_op_mode get_pon_op_mode(void *ll_handle)
+static enum pon_adapter_errno get_pon_op_mode(void *ll_handle,
+						enum pa_pon_op_mode *mode)
 {
 	struct fapi_pon_wrapper_ctx *ctx = ll_handle;
 
-	return get_pa_mode(ctx->cfg.mode);
+	if (!mode) {
+		dbg_out_ret("%d", PON_ADAPTER_ERR_INVALID_VAL);
+		return PON_ADAPTER_ERR_INVALID_VAL;
+	}
+	*mode =	get_pa_mode(ctx->cfg.mode);
+
+	return PON_ADAPTER_SUCCESS;
 }
 
 static enum pon_adapter_errno get_alarm_status(void *ll_handle,

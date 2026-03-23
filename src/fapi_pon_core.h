@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- *  Copyright (c) 2022 -2 2024 MaxLinear, Inc.
+ *  Copyright (c) 2022 - 2025 MaxLinear, Inc.
  *  Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -146,6 +146,10 @@ struct pon_ctx {
 	enum pon_mode mode;
 	/** Set to 1 if cached PON mode value is valid */
 	int mode_valid;
+	/** Platform type as established by a PONIP FW FW_VERSION msg. readout,
+	 *  if yet 0 it is invalid
+	 */
+	int actual_plat_type;
 	/** Cache for optic external calibration type */
 	bool ext_calibrated;
 	/** Set to 1 if optic external calibration type value is valid */

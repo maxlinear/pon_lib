@@ -64,17 +64,9 @@
 /* PON global constant definitions */
 /* =============================== */
 
-/** PON library version, major number */
-#define PON_VER_MAJOR		2
-/** PON library version, minor number */
-#define PON_VER_MINOR		3
-/** PON library version, build number */
-#define PON_VER_STEP		4
-/** PON library version, package type */
-#define PON_VER_TYPE		0
 /** PON library version concatenation */
 #define PON_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
-/** PON library version list */
+/** PON library version list, needs pon_config.h included before */
 #define PON_VERSION_CODE \
 	PON_VERSION(PON_VER_MAJOR, PON_VER_MINOR, PON_VER_STEP)
 

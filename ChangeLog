@@ -1,5 +1,19 @@
 NEXT VERSION
 
+v2.4.1 2026.03.12
+
+- PONRTSYS-15088: Long Time to get O51 status after unplug-plug sequence with fiber for Nokia XGS-PON stick
+
+v2.4.0 2026.01.20
+
+- PONRTSYS-15042: Unified ops-functions return types
+- PONRTSYS-15271: Incorrect TWDM total received words counter in 2.5G NG-PON2
+- PONRTSYS-15202: Incorrect FEC total code words counter in 2.5G DS modes (G-PON and NG-PON2 2.5G)
+- PONRTSYS-14177 [TPZ] Update PON FAPI with new messages
+  + prevent issuing of PONIP FW messages unsupported by underlying platform
+- PONRTSYS-15010: Refactor version handling
+  + and update version string format across multiple files
+
 v2.3.4 2025.08.26
 
 - PONRTSYS-15018: Improve soft TX disable handling with retry mechanism

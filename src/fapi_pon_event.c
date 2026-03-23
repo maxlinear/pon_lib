@@ -957,6 +957,7 @@ fapi_pon_fw_init_complete_msg(struct pon_ctx *ctx,
 	ctx->limits_valid = 0;
 	ctx->mode_valid = 0;
 	ctx->ext_cal_valid = 0;
+	ctx->actual_plat_type = 0;
 
 	if (ctx->fw_init_complete)
 		ctx->fw_init_complete(ctx->priv);

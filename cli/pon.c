@@ -16,22 +16,15 @@
 #include "fapi_pon.h"
 #include "fapi_pon_error.h"
 
-#ifndef _MKSTR_1
-#define _MKSTR_1(x)    #x
-#define _MKSTR(x)      _MKSTR_1(x)
-#endif
-
 #ifdef EXTRA_VERSION
 #define pon_extra_ver_str "." EXTRA_VERSION
 #else
-#define pon_extra_ver_str "." _MKSTR(PON_VER_TYPE)
+#define pon_extra_ver_str ""
 #endif
 
 /** what string support, version string */
 const char pon_whatversion[] = "@(#)MaxLinear PON library CLI, version "
-	_MKSTR(PON_VER_MAJOR)"."
-	_MKSTR(PON_VER_MINOR)"."
-	_MKSTR(PON_VER_STEP) pon_extra_ver_str;
+	PACKAGE_VERSION pon_extra_ver_str;
 
 static cli_cmd_register__file my_cli_cmds[] = {
 	pon_cli_cmd_register,

@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_REVISION($Revision: 0.1 $)
 
-AC_INIT([PON_LIB],[2.3.4],[],[pon_lib])
+AC_INIT([PON library],[2.4.1],[http://www.maxlinear.com],[pon_lib])
 AC_CONFIG_SRCDIR(src/Makefile.am)
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
@@ -13,6 +13,11 @@ ifdef([AC_PROG_CC_STDC], [AC_PROG_CC_STDC])
 AC_LANG([C])
 AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
+
+AX_SPLIT_VERSION
+AC_DEFINE_UNQUOTED([PON_VER_MAJOR], [$AX_MAJOR_VERSION], [Major version])
+AC_DEFINE_UNQUOTED([PON_VER_MINOR], [$AX_MINOR_VERSION], [Minor version])
+AC_DEFINE_UNQUOTED([PON_VER_STEP], [$AX_POINT_VERSION], [Build version])
 
 #
 # save the configure arguments
@@ -264,10 +269,13 @@ if test -e "$srcdir/.git"; then
                 EXTRA_VERSION=`git -C "$srcdir" rev-list HEAD "^$latest_tag" --count`
         fi
 
-        # Check if repo is dirty
+        # Add the git commit hash or dirty suffix
         if test `git -C "$srcdir" diff-index -p HEAD | wc -l` -gt 0 ; then
-                EXTRA_VERSION="$EXTRA_VERSION-dirty"
+                EXTRA_SUFFIX="dirty"
+        else
+                EXTRA_SUFFIX="g`git -C "$srcdir" rev-parse --short=7 HEAD`"
         fi
+        EXTRA_VERSION="$EXTRA_VERSION-$EXTRA_SUFFIX"
 fi
 
 if test -n "$EXTRA_VERSION"; then

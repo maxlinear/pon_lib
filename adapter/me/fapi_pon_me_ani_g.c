@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2022 - 2023 MaxLinear, Inc.
+ * Copyright (c) 2022 - 2026 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -39,12 +39,11 @@ dba_mode_get(void *ll_handle, uint16_t me_id, uint8_t *dba_mode)
 
 	/* Only one bit mode can be active at the same time */
 	if (caps.features & PON_FEATURE_DBAM1)
-		*dba_mode = 1; /* Modes 0 and 1 */
+		*dba_mode = PA_ANIG_DBA_PB_MODE_0_1;
 	else if (caps.features & PON_FEATURE_DBAM0)
-		*dba_mode = 0; /* Mode 0 only */
+		*dba_mode = PA_ANIG_DBA_PB_MODE_0_ONLY;
 	else
-		*dba_mode = 4; /* Not supported, should not happen */
-
+		*dba_mode = PA_ANIG_DBA_PB_MODE_NOT_SUPPORTED;
 	return PON_ADAPTER_SUCCESS;
 }
 

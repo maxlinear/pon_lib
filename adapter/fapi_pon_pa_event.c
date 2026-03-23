@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2025 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2026 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -33,6 +33,15 @@
 static bool is_operational_state(int state)
 {
 	return state >= 50 && state <= 69;
+}
+
+static bool is_serial_number_acquisition_phase(int state)
+{
+	/* Serial Number Acquisition Phase activation/PLOAM states are
+	 * O2-3 (standards other than G-PON) and O3 (G-PON).
+	 * In our implementation these correspond to states 23 and 30.
+	 */
+	return state == 23 || state == 30;
 }
 
 static enum fapi_pon_errorcode set_soft_tx_disable(struct pon_ctx *ponevt_ctx,
@@ -85,11 +94,34 @@ handle_ploam_state_change(void *priv,
 			  const struct pon_ploam_state_evt *ploam_state)
 {
 	struct fapi_pon_wrapper_ctx *ctx = priv;
+	struct fapi_pon_wrapper_cfg *cfg = &ctx->cfg;
+	enum fapi_pon_errorcode ret;
 
 	/* recheck and send ANI-G alarms when reaching operational state */
 	if (is_operational_state(ploam_state->current) &&
 	    !is_operational_state(ploam_state->previous))
 		pon_ani_g_alarm_recheck(ctx);
+	/* Some SFP sticks have by default the laser transmission disabled by
+	 * the soft tx disable bit. When such stick gets inserted, upon initial
+	 * LOF/LODS clear event it is attempted to clear the bit, but the
+	 * access to SFP's EEPROM is NOT yet functioning properly (e.g. readout
+	 * of register 110 is 0x00 which is wrong, but there is no indication
+	 * that this is a faulty readout) at that time. So to counter this, we
+	 * here try again to clear it. Upon entering the serial number
+	 * acquisition phase is the last chance to enable transmission and
+	 * hopefully accessing the EEPROM works by now. If clearing of the bit
+	 * succeeded on initial LOF/LODS clear event anyhow, this attempt here
+	 * will be a no-op.
+	 */
+	if (is_serial_number_acquisition_phase(ploam_state->current)) {
+		if ((cfg->sfp_tweaks & SFP_TWEAK_SKIP_SOFT_TX_DISABLE) == 0) {
+			dbg_prn("Serial Number acquisition phase, attempting to clear Soft TX Disable bit\n");
+			/* Clear the soft tx disable bit in the DMI EEPROM */
+			ret = set_soft_tx_disable(ctx->ponevt_ctx, false);
+			if (ret != PON_STATUS_OK)
+				dbg_err_fn_ret(set_soft_tx_disable, ret);
+		}
+	}
 
 	if (!ctx->event_handlers.ploam_state)
 		return;

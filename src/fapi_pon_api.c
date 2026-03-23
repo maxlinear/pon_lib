@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2020 - 2025 MaxLinear, Inc.
+ * Copyright (c) 2020 - 2026 MaxLinear, Inc.
  * Copyright (c) 2017 - 2020 Intel Corporation
  *
  * For licensing information, see the file 'LICENSE' in the root folder of
@@ -53,15 +53,10 @@
 #include "fapi_pon_os.h"
 #include "pon_ip_msg.h"
 
-#ifndef _MKSTR_1
-#define _MKSTR_1(x)    #x
-#define _MKSTR(x)      _MKSTR_1(x)
-#endif
-
 #ifdef EXTRA_VERSION
 #define pon_extra_ver_str "." EXTRA_VERSION
 #else
-#define pon_extra_ver_str "." _MKSTR(PON_VER_TYPE)
+#define pon_extra_ver_str ""
 #endif
 
 #ifndef ARRAY_SIZE
@@ -179,6 +174,24 @@
 #define MODE_ITU_PON (MODE_984_GPON | MODE_987_XGPON | MODE_9807_XGSPON | \
 		      MODE_989_NGPON2_10G | MODE_989_NGPON2_2G5)
 
+/*
+* Conversion factor for downstream frames from bytes to BIP32 words (4-Byte)
+* +------------------+---------------------+--------------------+
+* | Protocol         | Bytes (downstream)  | Words (downstream) |
+* +------------------+---------------------+--------------------+
+* | G-PON (2.5G)     | 38,880              | 9,720              |
+* | XG-PON           | 155,520             | 38,880             |
+* | XGS-PON          | 155,520             | 38,880             |
+* | NG-PON2 (2.5G)   | 38,880              | 9,720              |
+* | NG-PON2 (10G)    | 155,520             | 38,880             |
+* +------------------+---------------------+--------------------+
+*/
+#define DS_FRAMES_TO_BIP32_WORDS_MODE_GPON 9720
+#define DS_FRAMES_TO_BIP32_WORDS_MODE_XGPON 38880
+#define DS_FRAMES_TO_BIP32_WORDS_MODE_XGSPON 38880
+#define DS_FRAMES_TO_BIP32_WORDS_MODE_NGPON2_2G5 9720
+#define DS_FRAMES_TO_BIP32_WORDS_MODE_NGPON2_10G 38880
+
 /** TWDM_CONFIG.WL_SW_ROUNDS_INIT parameter's minimum allowed value */
 #define PONIPFW_TWDM_CONFIG_WL_SW_ROUNDS_MIN (1)
 
@@ -193,10 +206,8 @@ static const uint32_t threshold_cfg_10g[8] = {99532800, 9953280, 995328,
 				    99533, 9954, 996, 100, 10};
 
 /** what string support, version string */
-const char pon_whatversion[] = "@(#)MaxLinear PON library, Version "
-	_MKSTR(PON_VER_MAJOR)"."
-	_MKSTR(PON_VER_MINOR)"."
-	_MKSTR(PON_VER_STEP) pon_extra_ver_str;
+const char pon_whatversion[] =
+	"@(#)MaxLinear PON library, Version " PACKAGE_VERSION pon_extra_ver_str;
 
 static struct nla_policy
 pon_mbox_cnt_gtc_policy[PON_MBOX_A_CNT_GTC_MAX + 1] = {
@@ -512,6 +523,81 @@ static bool caps_features_check_if_one(struct pon_ctx *ctx, uint32_t features)
 		return false;
 
 	return caps.features & features;
+}
+
+/*
+ * Retrieves actual Platform type.
+ *
+ * Input:
+ * - ctx: PON library context created by fapi_pon_open
+ *   act_plat_type: pointer to an uint32_t to get populated with act_plat_type
+ *
+ * Return value:
+ * - PON_STATUS_OK : all went fine
+ *   PON_STATUS_FW_UNEXPECTED : unexpected value found in FW_VERSION.PLATFORM
+ *   All other errors potentially raised by fapi_pon_version_get()
+ *
+ */
+static enum fapi_pon_errorcode actual_platform_type_get(struct pon_ctx *ctx,
+							uint32_t *act_plat_type)
+{
+	enum fapi_pon_errorcode ret;
+	struct pon_version version;
+	static const uint32_t mapper[] = {
+		[PONFW_VERSION_PLATFORM_FPGA_PRX_A] = PLAT_T_PRX,
+		[PONFW_VERSION_PLATFORM_SOC_PRX_A]  = PLAT_T_PRX,
+		[PONFW_VERSION_PLATFORM_FPGA_PRX_B] = PLAT_T_PRX,
+		[PONFW_VERSION_PLATFORM_SOC_PRX_B]  = PLAT_T_PRX,
+		[PONFW_VERSION_PLATFORM_FPGA_URX_A] = PLAT_T_URX,
+		[PONFW_VERSION_PLATFORM_SOC_URX_A]  = PLAT_T_URX,
+		[PONFW_VERSION_PLATFORM_FPGA_URX_B] = PLAT_T_URX,
+		[PONFW_VERSION_PLATFORM_SOC_URX_B]  = PLAT_T_URX,
+		[PONFW_VERSION_PLATFORM_SOC_URX_C]  = PLAT_T_URX,
+		/* TODO: when this gets added uncomment it */
+		/* [PONFW_VERSION_PLATFORM_SOC_TPZ_A] = PLAT_T_TPZ */
+	};
+
+	if (ctx->actual_plat_type)
+		goto actual_plat_type_get_exit;
+
+	ret = fapi_pon_version_get(ctx, &version);
+	if (ret != PON_STATUS_OK)
+		return ret;
+
+	if (version.fw_version_platform >= ARRAY_SIZE(mapper))
+		return PON_STATUS_FW_UNEXPECTED;
+
+	ctx->actual_plat_type = 1UL << mapper[version.fw_version_platform];
+
+actual_plat_type_get_exit:
+	*act_plat_type = ctx->actual_plat_type;
+	return PON_STATUS_OK;
+}
+
+/*
+ * checks whether the actual platform type is any of platform types specified
+ * by plat_types parameter.
+ *
+ * Input:
+ * - ctx: PON library context created by fapi_pon_open
+ * - plat_types: Platform type(s) to check against
+ *
+ * Return value:
+ * - true if actual platform type is any of specified platform types
+ * - false otherwise
+ */
+static bool is_plat_type_any_of(struct pon_ctx *ctx, const uint32_t plat_types)
+{
+	enum fapi_pon_errorcode ret;
+	uint32_t act_plat_type;
+
+	ret = actual_platform_type_get(ctx, &act_plat_type);
+	if (ret != PON_STATUS_OK) {
+		PON_DEBUG_ERR("Actual Platform type cannot be established! Error code: %d", ret);
+		return false;
+	}
+
+	return !!(act_plat_type & plat_types);
 }
 
 /*
@@ -3772,8 +3858,10 @@ enum fapi_pon_errorcode
 	return pon_gtc_counters_get(ctx, PON_MBOX_D_DSWLCH_ID_CURR, param);
 }
 
-#define FRAMES_TO_FEC_WORDS_2500MB 157
-#define FRAMES_TO_FEC_WORDS_10000MB 627
+/* Number of FEC codewords per downstream frame for each standard */
+#define DS_FRAMES_TO_FEC_WORDS_MODE_984_GPON_2G5 153
+#define DS_FRAMES_TO_FEC_WORDS_MODE_989_NGPON2_2G5 157
+#define DS_FRAMES_TO_FEC_WORDS_MODE_ANY_10G 627
 
 enum fapi_pon_errorcode
 	fapi_pon_fec_counters_get(struct pon_ctx *ctx,
@@ -3782,6 +3870,7 @@ enum fapi_pon_errorcode
 	enum fapi_pon_errorcode ret;
 	struct pon_gpon_status gpon_status = {0};
 	struct pon_gtc_counters gtc_counters = {0};
+	uint8_t pon_mode;
 
 	if (!ctx || !param)
 		return PON_STATUS_INPUT_ERR;
@@ -3807,8 +3896,25 @@ enum fapi_pon_errorcode
 		param->words_corr = gtc_counters.fec_codewords_corr;
 		param->words_uncorr = gtc_counters.fec_codewords_uncorr;
 		param->seconds = gtc_counters.fec_sec;
-		param->words = gtc_counters.total_frames
-				* FRAMES_TO_FEC_WORDS_10000MB;
+
+		ret = fapi_pon_mode_get(ctx, &pon_mode);
+		if (ret != PON_STATUS_OK)
+			return ret;
+		switch (pon_mode) {
+			case PON_MODE_984_GPON:
+				param->words = gtc_counters.total_frames
+						* DS_FRAMES_TO_FEC_WORDS_MODE_984_GPON_2G5;
+				break;
+			case PON_MODE_989_NGPON2_2G5:
+				param->words = gtc_counters.total_frames
+						* DS_FRAMES_TO_FEC_WORDS_MODE_989_NGPON2_2G5;
+				break;
+			default:
+				/* All 10G modes (NG-PON2, XG-PON, XGS-PON) */
+				param->words = gtc_counters.total_frames
+						* DS_FRAMES_TO_FEC_WORDS_MODE_ANY_10G;
+				break;
+		}
 	}
 
 	return PON_STATUS_OK;
@@ -3847,7 +3953,7 @@ enum fapi_pon_errorcode
 		param->words_uncorr = gtc_counters.fec_codewords_uncorr;
 		param->seconds = gtc_counters.fec_sec;
 		param->words = gtc_counters.total_frames
-				* FRAMES_TO_FEC_WORDS_10000MB;
+				* DS_FRAMES_TO_FEC_WORDS_MODE_ANY_10G;
 	}
 
 	return PON_STATUS_OK;
@@ -5633,6 +5739,9 @@ enum fapi_pon_errorcode fapi_pon_synce_cfg_set(struct pon_ctx *ctx,
 	if (!ctx)
 		return PON_STATUS_INPUT_ERR;
 
+	if (!is_plat_type_any_of(ctx, PONFW_SYNCE_CONFIG_PLAT_COMPATIBILITY))
+		return PON_STATUS_SUPPORT;
+
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.loop_mode, param->loop_mode);
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.synce_mode, param->synce_mode);
 	ASSIGN_AND_OVERFLOW_CHECK(fw_param.synce_src, param->src);
@@ -5697,6 +5806,9 @@ enum fapi_pon_errorcode fapi_pon_synce_cfg_get(struct pon_ctx *ctx,
 	if (!ctx)
 		return PON_STATUS_INPUT_ERR;
 
+	if (!is_plat_type_any_of(ctx, PONFW_SYNCE_CONFIG_PLAT_COMPATIBILITY))
+		return PON_STATUS_SUPPORT;
+
 	return fapi_pon_generic_get(ctx,
 				    PONFW_SYNCE_CONFIG_CMD_ID,
 				    NULL,
@@ -5730,6 +5842,9 @@ enum fapi_pon_errorcode fapi_pon_synce_status_get(struct pon_ctx *ctx,
 {
 	if (!ctx)
 		return PON_STATUS_INPUT_ERR;
+
+	if (!is_plat_type_any_of(ctx, PONFW_SYNCE_STATUS_PLAT_COMPATIBILITY))
+		return PON_STATUS_SUPPORT;
 
 	return fapi_pon_generic_get(ctx,
 				    PONFW_SYNCE_STATUS_CMD_ID,
@@ -7752,6 +7867,9 @@ enum fapi_pon_errorcode fapi_pon_aon_cfg_set(struct pon_ctx *ctx,
 	if (!pon_mode_check(ctx, MODE_AON))
 		return PON_STATUS_OPERATION_MODE_ERR;
 
+	if (!is_plat_type_any_of(ctx, PONFW_AON_CONFIG_PLAT_COMPATIBILITY))
+		return PON_STATUS_SUPPORT;
+
 	ret = fapi_pon_generic_get(ctx,
 				   PONFW_AON_CONFIG_CMD_ID,
 				   NULL,
@@ -7795,6 +7913,9 @@ enum fapi_pon_errorcode fapi_pon_aon_cfg_get(struct pon_ctx *ctx,
 	if (!pon_mode_check(ctx, MODE_AON))
 		return PON_STATUS_OPERATION_MODE_ERR;
 
+	if (!is_plat_type_any_of(ctx, PONFW_AON_CONFIG_PLAT_COMPATIBILITY))
+		return PON_STATUS_SUPPORT;
+
 	return fapi_pon_generic_get(ctx,
 				    PONFW_AON_CONFIG_CMD_ID,
 				    NULL,
@@ -7814,6 +7935,9 @@ static enum fapi_pon_errorcode fapi_pon_aon_tx_en_dis(struct pon_ctx *ctx,
 
 	if (!pon_mode_check(ctx, MODE_AON))
 		return PON_STATUS_OPERATION_MODE_ERR;
+
+	if (!is_plat_type_any_of(ctx, PONFW_AON_CONFIG_PLAT_COMPATIBILITY))
+		return PON_STATUS_SUPPORT;
 
 	ret = fapi_pon_generic_get(ctx,
 				   PONFW_AON_CONFIG_CMD_ID,
@@ -8897,11 +9021,14 @@ fapi_pon_twdm_xgtc_counters_get(struct pon_ctx *ctx,
 	param->xgem_hec_err_corr = gtc_counters.gem_hec_errors_corr;
 	param->xgem_hec_err_uncorr = gtc_counters.gem_hec_errors_uncorr;
 	param->bip_errors = gtc_counters.bip_errors;
-	/* words are to be derived from the frames:
-	 * G-PON: words = frames * 9720 (words per 125 µs frame)
-	 * XGS-/XG-/NG-PON2: words = frames * 38880 (words per 125 µs frame)
-	 */
-	param->words = gtc_counters.total_frames * 38880;
+	if (pon_mode_check(ctx, MODE_989_NGPON2_2G5)) {
+		param->words = gtc_counters.total_frames
+				* DS_FRAMES_TO_BIP32_WORDS_MODE_NGPON2_2G5;
+	} else {
+		/* Only possible option here is MODE_989_NGPON2_10G */
+		param->words = gtc_counters.total_frames
+				* DS_FRAMES_TO_BIP32_WORDS_MODE_NGPON2_10G;
+	}
 
 	return PON_STATUS_OK;
 }
