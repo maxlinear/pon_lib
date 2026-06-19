@@ -1,5 +1,9 @@
 NEXT VERSION
 
+v2.4.2 2026.04.15
+
+- PONRTSYS-15670: Improve pon_byte_copy function to handle endianness and trailing bytes correctly
+
 v2.4.1 2026.03.12
 
 - PONRTSYS-15088: Long Time to get O51 status after unplug-plug sequence with fiber for Nokia XGS-PON stick

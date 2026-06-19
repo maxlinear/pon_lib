@@ -442,20 +442,26 @@ static enum fapi_pon_errorcode integrity_check(void *param,
 
 void pon_byte_copy(uint8_t *dst, const uint8_t *src, int size)
 {
-	int i;
+	if (size <= 0)
+		return;
 
-#if __BYTE_ORDER == __BIG_ENDIAN
-	for (i = 0; i < size; i++)
-		dst[i] = src[i];
-#else
-	/* copy only full 32bit values */
-	for (i = 0; i + 3 < size; i += 4) {
-		dst[i] = src[i + 3];
-		dst[i + 1] = src[i + 2];
-		dst[i + 2] = src[i + 1];
-		dst[i + 3] = src[i];
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	/* Swap complete 32-bit words and copy any remaining tail bytes by the
+	 * generic non-swapping code as-is.
+	 */
+	while (size >= 4) {
+		dst[0] = src[3];
+		dst[1] = src[2];
+		dst[2] = src[1];
+		dst[3] = src[0];
+		dst += 4;
+		src += 4;
+		size -= 4;
 	}
 #endif
+
+	while (size-- > 0)
+		*dst++ = *src++;
 }
 
 static enum fapi_pon_errorcode pon_mode_get_decode(struct pon_ctx *ctx,

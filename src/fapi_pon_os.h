@@ -129,7 +129,7 @@ memcmp_s(const void *p, size_t s1, const void *v, size_t s2, int *pret)
 #  define PON_VER_MAJOR 2
 #  define PON_VER_MINOR 3
 #  define PON_VER_STEP 4
-#  define PACKAGE_VERSION "2.4.1"
+#  define PACKAGE_VERSION "2.4.2"
 
 #endif
 #ifdef LINUX

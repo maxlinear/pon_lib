@@ -456,11 +456,12 @@ enum fapi_pon_errorcode fapi_pon_msg_prepare(struct pon_ctx **ctx,
 int get_clock_cycle_from_caps(struct pon_cap *caps);
 
 /**
- * \brief Copy bytes and set it in correct endianness
+ * \brief Copy bytes and set complete 32-bit words in correct endianness
  *
  * \param[in] dst Pointer to the destination data where content is to be copied
  * \param[in] src Pointer to the source of data to be copied
- * \param[in] size Number of bytes to copy
+ * \param[in] size Number of bytes to copy. Trailing bytes which do not form
+ * a complete 32-bit word are copied unchanged.
  */
 void pon_byte_copy(uint8_t *dst, const uint8_t *src, int size);
 
